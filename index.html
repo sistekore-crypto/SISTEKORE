@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#164E5A" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo-sistekore.png" />
+    <link rel="apple-touch-icon" href="/logo-sistekore.png" />
+
+    <!-- SEO básico -->
+    <title>SisteKore — Soporte TI & Soluciones Cloud asistidas con IA</title>
+    <meta name="description" content="SisteKore — Plataforma SaaS de Soporte TI & Soluciones Cloud. Gestión inteligente de tickets, clientes, inventario y operaciones técnicas asistida con IA para empresas de servicios TI." />
+    <meta name="keywords" content="SisteKore, SaaS, soporte TI, soluciones cloud, gestión de tickets, IA, inteligencia artificial, operación técnica, CRM, trazabilidad, Colombia, Medellín" />
+    <meta name="author" content="SisteKore" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://sistekore.vercel.app" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SisteKore — Soporte TI & Soluciones Cloud con IA" />
+    <meta property="og:description" content="Plataforma inteligente para empresas de soporte técnico y servicios TI. Centraliza tickets, clientes, seguimiento operativo e insights IA para transformar operaciones reactivas en servicios organizados, trazables y proactivos." />
+    <meta property="og:image" content="https://sistekore.vercel.app/logo-sistekore.png" />
+    <meta property="og:url" content="https://sistekore.vercel.app" />
+    <meta property="og:site_name" content="SisteKore" />
+    <meta property="og:locale" content="es_CO" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SisteKore — Soporte TI & Soluciones Cloud con IA" />
+    <meta name="twitter:description" content="Plataforma SaaS de Soporte TI & Soluciones Cloud asistida con IA. Tickets, clientes, operación técnica en un solo lugar." />
+    <meta name="twitter:image" content="https://sistekore.vercel.app/logo-sistekore.png" />
+
+    <!-- PWA hints -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SisteKore" />
+
+    <!-- Preconnect para mejorar carga -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://wa.me" crossorigin />
+    <link rel="preconnect" href="https://mail.google.com" crossorigin />
+  </head>
+  <body>
+    <div id="root">
+      <!-- Loading inicial mientras carga el JS -->
+      <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0D3A42 0%,#164E5A 50%,#0D3A42 100%);color:#fff;font-family:system-ui,-apple-system,sans-serif;z-index:9999">
+        <img src="/logo-sistekore.png" alt="SisteKore" style="height:80px;margin-bottom:16px;animation:pulse 1.5s ease-in-out infinite" onerror="this.style.display='none'" />
+        <div style="font-size:20px;font-weight:800;letter-spacing:3px;margin-bottom:4px">SISTEKORE</div>
+        <div style="font-size:11px;opacity:0.75;letter-spacing:1.5px">SOPORTE TI · SOLUCIONES CLOUD</div>
+        <div style="margin-top:16px;width:32px;height:32px;border:3px solid rgba(255,255,255,0.2);border-top-color:#3EA695;border-radius:50%;animation:spin .8s linear infinite"></div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}</style>
+      </div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+    <noscript>Esta aplicación requiere JavaScript activado para funcionar.</noscript>
+
+    <!-- Google Translate (traducción in-page) — div invisible + script -->
+    <div id="google_translate_element" style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none"></div>
+    <script>
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+          pageLanguage: 'es',
+          includedLanguages: 'en,es',
+          autoDisplay: false,
+          layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+        }, 'google_translate_element');
+      }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
+    <style>
+      /* Ocultar la barra superior de Google Translate y notificaciones */
+      .goog-te-banner-frame.skiptranslate { display: none !important; }
+      body { top: 0 !important; }
+      .goog-te-gadget { font-size: 0 !important; }
+      .goog-te-gadget > span { display: none !important; }
+      .goog-tooltip, .goog-tooltip:hover { display: none !important; }
+      .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+    </style>
+  </body>
+</html>

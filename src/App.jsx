@@ -1,0 +1,8584 @@
+﻿import { useState, useEffect, useRef } from "react";
+import { supabase, loadAllFromSupabase, saveCollection, saveAllToSupabase, supabaseStatus } from "./lib/supabase";
+import {
+  LayoutDashboard, Ticket, Users, TrendingUp, Package, Star, Calendar, BookOpen,
+  Plus, Search, X, Check, Clock, Phone, Mail, MapPin, User, Monitor, Wifi,
+  Printer, Shield, FileText, Send, CheckCircle, Bell, Settings, Menu,
+  ExternalLink, Lock, UserPlus, Smartphone, ChevronUp, Camera, Target,
+  AlertTriangle, Edit3, Trash2, Eye, BarChart3, Activity, ArrowUpRight,
+  ArrowDownRight, History, Upload, Briefcase, Download,
+  Cctv, Headphones, LifeBuoy, ShieldAlert, Cpu, HardDrive, Laptop, Server,
+  Router, Network, DollarSign, ClipboardList, FileCheck, Handshake,
+  HelpCircle, Wrench, Cable, Video
+} from "lucide-react";
+
+/* SisteKore — Design System (SaaS premium · Linear / Stripe / Notion AI / Vercel inspired)
+   Toda la app consume estos tokens. Cambiar aquí = cambiar en todos los módulos.
+   Spec aprobado por Alexander 2026-05-13 — NO bajar la luminosidad ni saturar gris. */
+const C = {
+  // === SISTEKORE — Paleta Teal / Emerald / Cloud ===
+  // Basado en el logo: dos anillos entrelazados (teal profundo + emerald glass)
+
+  // —— Marca / acción principal ——
+  blue:  "#3EA695",   // Emerald — CTAs, links, sidebar activo, acciones primarias
+  blueL: "#5FBFAE",   // Emerald más suave para hover/secundarios
+
+  // —— Navy / sidebar profundo (ahora teal profundo) ——
+  navy:  "#164E5A",   // Teal profundo — texto principal, cards oscuras, headers
+  navyL: "#1F6472",   // Hover teal / borde sidebar
+  navyD: "#0D3A42",   // Sidebar premium profundo teal (NO negro puro)
+
+  // —— IA / Premium (mantener morado para diferenciar insights IA) ——
+  purple:  "#7C3AED", // Violeta IA — insights, badges IA, reportes inteligentes
+  purpleL: "#A855F7", // Morado glow — efectos neon suaves
+
+  // —— Estados ——
+  red:  "#EF4444", redL: "#F87171",   // Alertas críticas, SLA vencidos, urgentes
+  ok:   "#10B981", okL:  "#D1FAE5",   // Éxito, resueltos, OK
+  warn: "#F59E0B", warnL: "#FEF3C7",  // Warning, prioridad media, stock bajo
+  err:  "#EF4444", errL:  "#FEE2E2",  // Alias de red para semántica de error
+
+  // —— Neutros + fondo ——
+  w:    "#FFFFFF",
+  appBg: "#F4FAF9",  // Fondo principal app — mint muy suave, limpio
+  g50:  "#F4FAF9",   // Mantener compatibilidad (mint tenue)
+  g100: "#E8F1EF",   // Fondos sutiles, separadores ultra-suaves
+  g200: "#D5E4E1",   // Bordes de cards
+  g300: "#B8CFCB",   // Bordes activos
+  g400: "#7E9994",   // Texto disabled / metadatos
+  g500: "#5A7772",   // Texto secundario
+  g600: "#3D5A55",   // Texto cuerpo
+
+  // —— Sombras premium ——
+  shadowCard:  "0 4px 20px rgba(22, 78, 90, 0.08)",     // Reposo (tinte teal)
+  shadowHover: "0 10px 30px rgba(62, 166, 149, 0.18)",  // Hover con glow emerald
+
+  // —— Glow neon (sutil, NO gamer) ——
+  glowBlue:   "rgba(62, 166, 149, 0.22)",   // Glow emerald
+  glowPurple: "rgba(124, 58, 237, 0.18)",   // Glow morado IA
+
+  // —— Gradientes premium ——
+  // Hero IA: blanco amplio → mint muy suave → toque de emerald al final
+  heroIA: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 28%, #F0F9F7 55%, #DCEFE9 80%, #C5E4DB 100%)",
+  // Sidebar: teal profundo con apertura sutil
+  sidebar: "linear-gradient(180deg, #0D3A42 0%, #164E5A 100%)"
+};
+
+/* === LOGO SisteKore === */
+function Logo({ w = 170 }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: -2 }}>
+      <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 44, width: "auto", objectFit: "contain", flexShrink: 0, filter: "drop-shadow(0 2px 8px rgba(62,166,149,0.35))" }} />
+      <div>
+        <div style={{ color: C.w, fontSize: 20, fontWeight: 900, letterSpacing: 2.5, lineHeight: 1, textShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>SISTEKORE</div>
+        <div style={{ color: "#B3DFD7", fontSize: 8, letterSpacing: 1, marginTop: 5, lineHeight: 1.2, fontWeight: 700, whiteSpace: "nowrap" }}>SOPORTE TI · CLOUD</div>
+      </div>
+    </div>
+  );
+}
+function LogoMini() {
+  return (
+    <div style={{
+      width: 48, height: 48, borderRadius: 10,
+      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+    }}>
+      <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 44, width: "auto", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }} />
+    </div>
+  );
+}
+
+/* === ROLES === */
+const ROLES = {
+  dir_operativo: { label: "Dir. Operativo", short: "Dir.Op.", color: C.red, all: true },
+  dir_comercial: { label: "Dir.ª Comercial", short: "Dir.Com.", color: C.blue, all: true },
+  dir_admin: { label: "Dir.ª Admón.", short: "Dir.Adm.", color: C.purple, all: true },
+  dir_contable: { label: "Dir.ª Contable", short: "Dir.Cont.", color: C.warn, all: true },
+  aux_operativo: { label: "Técnico", short: "Téc.", color: C.ok, pages: ["tickets", "calendar", "knowledge"] },
+  aux_comercial: { label: "Aux. Comercial", short: "Com.", color: C.blueL, pages: ["tickets", "clients", "calendar", "inventory"] },
+  aux_admin: { label: "Aux. Administrativo", short: "Aux.Adm.", color: "#A569BD", all: true },
+  aux_contable: { label: "Aux. Contable", short: "Aux.Cont.", color: "#EB984E", all: true }
+};
+const AP = ["dashboard", "tickets", "clients", "inventory", "calendar", "knowledge", "users"];
+function gp(role) { const r = ROLES[role]; return r ? (r.all ? AP : r.pages || []) : AP; }
+
+const UI = [
+  { id: "U01", name: "Alexander Ospina", role: "dir_operativo", email: "sistekore@gmail.com", phone: "3015287543", av: "AO", on: true },
+  { id: "U02", name: "Erika Julieth", role: "dir_comercial", email: "sistekore@gmail.com", phone: "3157420568", av: "EJ", on: true },
+  { id: "U05", name: "Amanda López", role: "aux_operativo", email: "", phone: "", av: "AL", on: true },
+  { id: "U06", name: "David Lamar", role: "aux_operativo", email: "", phone: "", av: "DL", on: true },
+  { id: "U07", name: "Backups", role: "aux_operativo", email: "", phone: "", av: "BK", on: true },
+  { id: "U08", name: "(Vacante) Aux. Comercial", role: "aux_comercial", email: "", phone: "", av: "AC", on: false },
+  { id: "U09", name: "(Vacante) Aux. Admin", role: "aux_admin", email: "", phone: "", av: "AA", on: false },
+  { id: "U10", name: "(Vacante) Aux. Contable", role: "aux_contable", email: "", phone: "", av: "ACo", on: false }
+];
+
+const CATS = {
+  "Equipos de cómputo": ["PC no prende", "PC muy lento", "Pantalla azul", "No inicia Windows", "Sobrecalentamiento", "Perdí archivos"],
+  "Redes y Conectividad": ["No hay internet empresa", "Internet muy lento", "WiFi no conecta", "DNS no responde", "Conflicto IP"],
+  "Impresoras": ["No imprime", "Impresora offline", "Atasco de papel", "Impresión borrosa"],
+  "Cámaras de Seguridad": ["Cámaras no funcionan", "DVR no graba", "No acceso remoto"],
+  "Sistemas y Software": ["Sistema caído", "Servidor no responde", "Correo no funciona", "Backup fallido"],
+  "Ciberseguridad": ["Posible ransomware", "Acceso no autorizado", "Virus detectado", "Phishing"]
+};
+const SLA = { URGENTE: { r: 6, s: 8 }, MEDIA: { r: 8, s: 24 }, "NO URGENTE": { r: 24, s: 72 } };
+const TECHS = ["Alexander Ospina", "Amanda López", "David Lamar", "Backups"];
+
+const TRACE_TYPES = [
+  { id: "recepcion",        label: "Recepción",           emoji: "📥", color: "#2980B9", visible: true,  desc: "Equipo recibido — estado físico, accesorios incluidos, descripción del problema reportado por el cliente" },
+  { id: "diagnostico",      label: "Diagnóstico",          emoji: "🔍", color: "#7C3AED", visible: true,  desc: "Resultado del diagnóstico técnico — causa raíz identificada" },
+  { id: "en_proceso",       label: "En proceso",           emoji: "⚙️",  color: "#D97706", visible: true,  desc: "Trabajo en curso — describir qué se está haciendo" },
+  { id: "espera_repuesto",  label: "Esperando repuesto",   emoji: "📦", color: "#64748B", visible: true,  desc: "Repuesto solicitado — qué pieza, dónde se pidió, tiempo estimado" },
+  { id: "pendiente_cliente",label: "Pendiente cliente",    emoji: "👤", color: "#DB2777", visible: true,  desc: "Se requiere acción del cliente — qué necesitamos de ellos" },
+  { id: "pruebas",          label: "Pruebas finales",      emoji: "✅", color: "#059669", visible: true,  desc: "Pruebas realizadas — resultados obtenidos" },
+  { id: "resuelto",         label: "Resuelto",             emoji: "🎉", color: "#059669", visible: true,  desc: "Solución aplicada — equipo funcionando correctamente" },
+  { id: "entregado",        label: "Entregado",            emoji: "🚚", color: "#2980B9", visible: true,  desc: "Equipo entregado al cliente — condición de entrega, firma" },
+  { id: "nota_interna",     label: "Nota interna",         emoji: "🔒", color: "#DC2626", visible: false, desc: "Solo visible para el equipo técnico — NO se muestra al cliente" }
+];
+
+function ap(t) {
+  const l = t.toLowerCase();
+  if (l.includes("no hay internet") || l.includes("caído") || l.includes("no responde") || l.includes("ransomware") || l.includes("cámaras no")) return "URGENTE";
+  if (l.includes("lento") || l.includes("no imprime") || l.includes("wifi") || l.includes("offline") || l.includes("correo") || l.includes("virus")) return "MEDIA";
+  return "NO URGENTE";
+}
+function slaS(t) {
+  if (!SLA[t.pri]) return { s: "ok", l: "—" };
+  const e = (Date.now() - new Date(t.at).getTime()) / 36e5; // horas transcurridas
+  const lim = t.tech ? SLA[t.pri].s : SLA[t.pri].r;
+  const remaining = lim - e; // horas restantes
+  if (e >= lim) {
+    const overMin = Math.round((e - lim) * 60);
+    return { s: "exp", l: overMin >= 60 ? Math.floor(overMin / 60) + "h tarde" : overMin + "min tarde" };
+  }
+  // < 1 hora: mostrar minutos
+  if (remaining < 1) {
+    return { s: e >= lim * 0.75 ? "warn" : "ok", l: Math.max(1, Math.round(remaining * 60)) + "min" };
+  }
+  // 1h - 24h: mostrar horas y minutos
+  if (remaining < 24) {
+    const h = Math.floor(remaining);
+    const m = Math.round((remaining - h) * 60);
+    if (e >= lim * 0.75) return { s: "warn", l: m > 0 ? `${h}h ${m}m` : `${h}h` };
+    return { s: "ok", l: m > 0 ? `${h}h ${m}m` : `${h}h` };
+  }
+  // > 24h: mostrar días
+  const days = Math.floor(remaining / 24);
+  return { s: "ok", l: days + "d" };
+}
+function ta(d) {
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 6e4);
+  if (m < 60) return m + "m";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + "h";
+  return Math.floor(h / 24) + "d";
+}
+
+
+function mk() {
+  const n = Date.now();
+  return {
+    clients: [
+      { id: "C1", name: "Distribuidora El Éxito", nit: "900123456-1", contact: "Carlos Méndez", phone: "3001234567", email: "carlos@elexito.com", wa: "573001234567", nb: "El Poblado", city: "Medellín", type: "Empresa", seg: "microempresa", plan: "Plan Mensual", dev: 8 },
+      { id: "C2", name: "Consultorio Dra. Vélez", nit: "43876543", contact: "Ana Vélez", phone: "3157654321", email: "ana@gmail.com", wa: "573157654321", nb: "Laureles", city: "Medellín", type: "Empresa", seg: "microempresa", plan: "Por demanda", dev: 4 },
+      { id: "C3", name: "Familia Rodríguez", nit: "71987654", contact: "Pedro Rodríguez", phone: "3209876543", email: "pedro@hotmail.com", wa: "573209876543", nb: "Belén", city: "Medellín", type: "Hogar", seg: "hogar", plan: "Por demanda", dev: 3 },
+      { id: "C4", name: "Ferretería La Esquina", nit: "900765432-8", contact: "Luis Gómez", phone: "3112345678", email: "contacto@laesquina.co", wa: "573112345678", nb: "Guayabal", city: "Medellín", type: "Empresa", seg: "microempresa", plan: "Plan Pro", dev: 12 },
+      { id: "C5", name: "Papelería Norma", nit: "900234567-3", contact: "Sandra Torres", phone: "3145678901", email: "sandra@norma.co", wa: "573145678901", nb: "Envigado", city: "Envigado", type: "Empresa", seg: "microempresa", plan: "Plan Mensual", dev: 6 }
+    ],
+    tickets: [
+      { id: "TK-0001", cid: "C1", inc: "No hay internet empresa", desc: "Sin conexión desde 7am", pri: "URGENTE", st: "EN PROGRESO", tech: "Alexander Ospina", at: new Date(n - 2 * 36e5).toISOString() },
+      { id: "TK-0002", cid: "C4", inc: "No imprime", desc: "HP LaserJet luz naranja", pri: "MEDIA", st: "PENDIENTE", tech: "", at: new Date(n - 5 * 36e5).toISOString() },
+      { id: "TK-0003", cid: "C2", inc: "PC muy lento", desc: "PC recepción tarda 10 min", pri: "MEDIA", st: "PENDIENTE", tech: "", at: new Date(n - 9 * 36e5).toISOString() },
+      { id: "TK-0004", cid: "C3", inc: "Pantalla azul", desc: "Al iniciar Windows", pri: "MEDIA", st: "PENDIENTE", tech: "", at: new Date(n - 3 * 36e5).toISOString() },
+      { id: "TK-0005", cid: "C5", inc: "Posible ransomware", desc: "Archivos encriptados", pri: "URGENTE", st: "PENDIENTE", tech: "", at: new Date(n - 1 * 36e5).toISOString() }
+    ],
+    solved: [
+      { id: "TS01", cid: "C1", inc: "Conflicto de IP", pri: "URGENTE", tech: "Alexander Ospina", dt: "2026-04-03", sol: "Reconfigurado DHCP", sat: 5, cmt: "Excelente servicio", rated: true },
+      { id: "TS02", cid: "C4", inc: "Atasco de papel", pri: "NO URGENTE", tech: "Amanda López", dt: "2026-04-02", sol: "Limpieza rodillos", sat: 4, cmt: "Bien", rated: true },
+      { id: "TS03", cid: "C2", inc: "Backup fallido", pri: "URGENTE", tech: "Alexander Ospina", dt: "2026-04-01", sol: "Tarea automática + nube", sat: 0, cmt: "", rated: false }
+    ],
+    inv: [
+      { id: "I1", name: "Alcohol isopropílico 1L", cat: "Químicos", qty: 3, min: 2, st: "OK", lastBuy: "2026-04-15", loans: [], notes: "Para limpieza de tarjetas" },
+      { id: "I2", name: "Silicona dieléctrica", cat: "Químicos", qty: 1, min: 2, st: "BAJO", lastBuy: "2026-03-10", loans: [], notes: "" },
+      { id: "I3", name: "Limpia LCD spray", cat: "Limpieza", qty: 2, min: 1, st: "OK", lastBuy: "2026-04-01", loans: [], notes: "" },
+      { id: "I4", name: "Brocha antiestática", cat: "Limpieza", qty: 4, min: 2, st: "OK", lastBuy: "2026-02-20", loans: [], notes: "" },
+      { id: "I5", name: "Set destornilladores precisión", cat: "Herramientas", qty: 2, min: 1, st: "OK", lastBuy: "2025-12-05", loans: [{ tech: "Alexander Ospina", date: "2026-04-28", qty: 1 }], notes: "Marca Wiha · 32 puntas" },
+      { id: "I6", name: "Multímetro digital", cat: "Herramientas", qty: 1, min: 1, st: "OK", lastBuy: "2025-11-10", loans: [], notes: "" },
+      { id: "I7", name: "Pasta térmica", cat: "Químicos", qty: 0, min: 1, st: "AGOTADO", lastBuy: "2025-10-15", loans: [], notes: "Comprar urgente" },
+      { id: "I8", name: "Aire comprimido lata", cat: "Limpieza", qty: 5, min: 3, st: "OK", lastBuy: "2026-04-10", loans: [], notes: "" },
+      { id: "I9", name: "Pinzas crimpadoras RJ45", cat: "Herramientas", qty: 1, min: 1, st: "OK", lastBuy: "2025-09-01", loans: [{ tech: "Amanda López", date: "2026-04-30", qty: 1 }], notes: "" }
+    ],
+    events: (() => {
+      // Genera fechas demo a partir de hoy (para que siempre se vean en el día actual)
+      const today = new Date();
+      const dStr = (delta = 0) => { const d2 = new Date(today); d2.setDate(d2.getDate() + delta); return d2.toISOString().slice(0, 10); };
+      return [
+        // ========== HOY — OPERATIVO (Técnicos) ==========
+        { id: "E1",  title: "Visita Ferretería La Esquina", type: "visita",       cid: "C4", date: dStr(0), time: "09:00", tech: "Alexander Ospina", notes: "Cliente reportó problema de internet intermitente." },
+        { id: "E2",  title: "Mto Familia Rodríguez",        type: "mantenimiento", cid: "C3", date: dStr(0), time: "10:00", tech: "Amanda López",     notes: "Mantenimiento preventivo trimestral, 2 equipos." },
+        { id: "E3",  title: "Instalación impresora",        type: "instalacion",   cid: "C1", date: dStr(0), time: "11:00", tech: "Alexander Ospina", notes: "Configurar impresora de red HP LaserJet." },
+        { id: "E4",  title: "Revisión UPS Datacenter",      type: "revision",      cid: "C2", date: dStr(0), time: "14:00", tech: "Alexander Ospina", notes: "Diagnóstico de UPS marca APC." },
+        { id: "E5",  title: "Visita preventiva a equipos",  type: "visita",        cid: "C5", date: dStr(0), time: "14:30", tech: "Amanda López",     notes: "Limpieza física y revisión de software." },
+        { id: "E6",  title: "Entrega de repuestos",         type: "entrega",       cid: "C4", date: dStr(0), time: "16:30", tech: "Alexander Ospina", notes: "Entregar disco SSD comprado por cliente." },
+        // ========== HOY — OPERATIVO ==========
+        { id: "E7",  title: "Revisión técnica Dra. Vélez",  type: "revision",      cid: "C2", date: dStr(0), time: "10:30", tech: "Erika Julieth",    notes: "Revisión servidor + plan anual." },
+        { id: "E8",  title: "Instalación equipo",           type: "instalacion",   cid: "C1", date: dStr(0), time: "15:00", tech: "Erika Julieth",    notes: "Instalación en Distribuidora El Éxito." },
+        { id: "E9",  title: "Visita de seguimiento",        type: "visita",        cid: "C5", date: dStr(0), time: "16:00", tech: "Erika Julieth",    notes: "Verificar mantenimiento mensual." },
+        // ========== MAÑANA ==========
+        { id: "E10", title: "Visita Técnica Ferretería",    type: "visita",        cid: "C4", date: dStr(1), time: "09:00", tech: "Erika Julieth",    notes: "Revisión de equipos del cliente." },
+        { id: "E11", title: "Mantenimiento Clínica",        type: "mantenimiento", cid: "C2", date: dStr(1), time: "10:00", tech: "Amanda López",     notes: "Mantenimiento mensual contratado." },
+        // ========== EN 2 DÍAS ==========
+        { id: "E12", title: "Visita Preventiva",            type: "visita",        cid: "C3", date: dStr(2), time: "08:30", tech: "Alexander Ospina", notes: "Revisión trimestral del Plan Total." }
+      ];
+    })(),
+    audit: [
+      { ts: new Date(n - 36e5).toISOString(), user: "Alexander Ospina", action: "Creó ticket TK-0001", module: "Tickets" },
+      { ts: new Date(n - 72e5).toISOString(), user: "Erika Julieth", action: "Agregó cliente Ferretería", module: "Clientes" },
+      { ts: new Date(n - 864e5).toISOString(), user: "Alexander Ospina", action: "Resolvió ticket TS01", module: "Tickets" }
+    ],
+    notifications: [
+      { id: "N1", text: "🔴 TK-0005 URGENTE sin asignar — Posible ransomware", time: new Date(n - 36e5).toISOString(), read: false, type: "urgent" },
+      { id: "N2", text: "⚠️ TK-0003 próximo a vencer SLA", time: new Date(n - 72e5).toISOString(), read: false, type: "sla" }
+    ],
+    kb: [
+      { id: "K1", cat: "Redes",        title: "Diagnóstico WiFi",         body: "1. Verificar luz módem (verde fija)\n2. Test cable directo\n3. Speedtest.net\n4. Cambiar canal WiFi (1, 6, 11)\n5. DNS: 8.8.8.8 / 8.8.4.4\n6. Reinicio 60 seg", keywords: "wifi router internet velocidad lentitud conexion", pdfUrl: "", icon: "Wifi", author: "Alexander Ospina", createdAt: "2026-04-15", updatedAt: "2026-04-15", views: 1240 },
+      { id: "K2", cat: "Impresoras",   title: "HP LaserJet fuera de línea", body: "1. Reiniciar cola de impresión\n2. Verificar conexión USB/Red\n3. Reinstalar driver desde hp.com\n4. Verificar tóner y papel", keywords: "hp laserjet impresora offline fuera linea cola", pdfUrl: "", icon: "Printer", author: "Alexander Ospina", createdAt: "2026-04-10", updatedAt: "2026-04-10", views: 980 },
+      { id: "K3", cat: "Equipos",      title: "Pantalla azul (BSOD)",      body: "1. Anotar código de error\n2. MemTest86 para RAM\n3. SFC /scannow en CMD admin\n4. CrystalDiskInfo para disco\n5. Verificar temperaturas", keywords: "bsod pantalla azul windows error memoria ram disco", pdfUrl: "", icon: "Monitor", author: "Alexander Ospina", createdAt: "2026-04-08", updatedAt: "2026-04-08", views: 540 },
+      { id: "K4", cat: "Seguridad",    title: "Protocolo ransomware",      body: "⚠️ URGENTE — Max 30 min\n1. DESCONECTAR de red ya\n2. NO apagar el equipo\n3. Fotos de pantalla\n4. Llamar a Alexander\n5. NO pagar rescate", keywords: "ransomware virus malware seguridad urgente cifrado", pdfUrl: "", icon: "ShieldAlert", author: "Alexander Ospina", createdAt: "2026-04-05", updatedAt: "2026-04-20", views: 610 },
+      { id: "K5", cat: "Cámaras",      title: "DVR/NVR no graba",          body: "1. Espacio en disco\n2. Config de grabación\n3. Cámaras asignadas\n4. Reiniciar DVR/NVR\n5. Alimentación cámaras", keywords: "dvr nvr camara grabacion video vigilancia cctv", pdfUrl: "", icon: "Cctv", author: "Alexander Ospina", createdAt: "2026-04-03", updatedAt: "2026-04-03", views: 455 },
+      { id: "K6", cat: "Procesos",     title: "Acta de Visita Técnica",    body: "Formato estándar SisteKore\n1. Datos generales\n2. Cliente y equipos\n3. Descripción problema\n4. Pruebas realizadas\n5. Diagnóstico\n6. Acciones + Resultado\n7. Firmas", keywords: "acta visita formato procedimiento documento firma cliente", pdfUrl: "", icon: "ClipboardList", author: "Alexander Ospina", createdAt: "2026-04-01", updatedAt: "2026-04-01", views: 720 },
+      { id: "K7", cat: "Impresoras",   title: "HP LaserJet no imprime",    body: "1. Verificar conexión\n2. Restaurar cola de impresión\n3. Verificar tóner\n4. Reinstalar driver", keywords: "hp imprime no driver toner cola", pdfUrl: "", icon: "Printer", author: "Alexander Ospina", createdAt: "2026-04-12", updatedAt: "2026-04-12", views: 320 },
+      { id: "K8", cat: "Equipos",      title: "Error 0x0000007B",          body: "1. Reiniciar equipo en modo seguro\n2. Verificar SATA y boot order\n3. Reparar arranque con USB Windows", keywords: "error 0x0000007b windows arranque boot bsod", pdfUrl: "", icon: "Laptop", author: "Alexander Ospina", createdAt: "2026-04-09", updatedAt: "2026-04-09", views: 280 },
+      { id: "K9", cat: "Atención cliente", title: "Cómo escribir un correo de seguimiento", body: "Plantilla SisteKore\n1. Saludo personalizado\n2. Recordatorio de la visita\n3. Acciones tomadas\n4. Próximos pasos\n5. Firma", keywords: "correo email seguimiento cliente plantilla", pdfUrl: "", icon: "Headphones", author: "Erika Julieth", createdAt: "2026-04-07", updatedAt: "2026-04-07", views: 195 },
+      { id: "K10", cat: "Comercial",   title: "Guion de cierre Plan Pro",  body: "1. Confirmar presupuesto\n2. Mostrar ROI mensual\n3. Caso de éxito real\n4. Cierre con sentido de urgencia", keywords: "ventas cierre plan pro guion comercial", pdfUrl: "", icon: "Briefcase", author: "Erika Julieth", createdAt: "2026-04-06", updatedAt: "2026-04-06", views: 165 },
+      { id: "K11", cat: "Comercial",   title: "Cotización inicial · plantilla", body: "Plantilla con: Datos del cliente · Alcance · Items · Subtotal · IVA · Total · Vigencia · Forma de pago", keywords: "cotizacion plantilla ventas formato precio", pdfUrl: "", icon: "FileText", author: "Erika Julieth", createdAt: "2026-04-04", updatedAt: "2026-04-04", views: 142 },
+      { id: "K12", cat: "Otros",       title: "Onboarding nuevo técnico",  body: "1. Crear usuario en SisteKore\n2. Asignar permisos\n3. Inducción de marca\n4. Tour por módulos\n5. Acompañamiento primeras 2 semanas", keywords: "onboarding tecnico nuevo capacitacion", pdfUrl: "", icon: "BookOpen", author: "Alexander Ospina", createdAt: "2026-04-02", updatedAt: "2026-04-02", views: 98 }
+    ]
+  };
+}
+
+/* === WHATSAPP ICON (SVG oficial) === */
+function WAIcon({ size = 14, color = "#FFFFFF" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+    </svg>
+  );
+}
+
+/* === UI PRIMITIVES === */
+const bc = { urgente: { bg: C.errL, c: C.err }, media: { bg: C.warnL, c: C.warn }, "no urgente": { bg: "#DBEAFE", c: C.blue }, "en progreso": { bg: "#DBEAFE", c: C.blue }, pendiente: { bg: C.warnL, c: C.warn }, solucionado: { bg: C.okL, c: C.ok }, ok: { bg: C.okL, c: C.ok }, bajo: { bg: C.warnL, c: C.warn }, agotado: { bg: C.errL, c: C.err }, activo: { bg: C.okL, c: C.ok }, pagado: { bg: C.okL, c: C.ok }, pendiente2: { bg: C.warnL, c: C.warn } };
+function Tg({ children }) { const k = (children || "").toString().toLowerCase(); const s = bc[k] || { bg: C.g100, c: C.g600 }; return <span style={{ display: "inline-flex", padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: s.bg, color: s.c, border: `1px solid ${s.c}22`, whiteSpace: "nowrap", fontFamily: "monospace" }}>{children}</span>; }
+function K({ icon: I, label, val, sub, color, onClick }) {
+  return <div data-kpi onClick={onClick} style={{ background: C.w, borderRadius: 11, padding: "12px 14px", border: `1px solid ${C.g200}`, flex: 1, minWidth: 140, cursor: onClick ? "pointer" : "default", transition: "transform .15s, box-shadow .15s" }} onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,.08)"; } }} onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+      <div style={{ width: 28, height: 28, borderRadius: 7, background: `${color}14`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I size={15} color={color} /></div>
+      {sub && <span style={{ fontSize: 9, color: C.g400, textAlign: "right" }}>{sub}</span>}
+    </div>
+    <div data-kpi-val style={{ fontSize: 20, fontWeight: 700, color: C.navy, fontFamily: "monospace", lineHeight: 1.1, marginBottom: 2 }}>{val}</div>
+    <div data-kpi-label style={{ fontSize: 10.5, color: C.g500, lineHeight: 1.2 }}>{label}{onClick && <span style={{ marginLeft: 4, fontSize: 9, color: color }}>→</span>}</div>
+  </div>;
+}
+function Mo({ open, onClose, title, children }) {
+  if (!open) return null;
+  return <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,29,48,0.5)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+    <div onClick={e => e.stopPropagation()} style={{ background: C.w, borderRadius: 13, width: "100%", maxWidth: 500, maxHeight: "88vh", overflow: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 16px", borderBottom: `1px solid ${C.g200}` }}>
+        <h3 style={{ fontSize: 13.5, fontWeight: 700, color: C.navy, margin: 0 }}>{title}</h3>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.g400 }}><X size={16} /></button>
+      </div>
+      <div style={{ padding: 16 }}>{children}</div>
+    </div>
+  </div>;
+}
+function Fl({ label, req, children }) { return <div style={{ marginBottom: 9 }}><label style={{ display: "block", fontSize: 9.5, fontWeight: 600, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{label}{req && <span style={{ color: C.red }}> *</span>}</label>{children}</div>; }
+const is = { width: "100%", padding: "7px 10px", borderRadius: 7, border: `1px solid ${C.g200}`, fontSize: 12.5, color: C.navy, outline: "none", background: C.g50, boxSizing: "border-box", fontFamily: "inherit" };
+function Bt({ children, onClick, icon: I, small, v = "red", disabled }) {
+  const cs = { red: C.red, navy: C.navy, ok: C.ok, blue: C.blue, purple: C.purple };
+  return <button disabled={disabled} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: small ? "4px 9px" : "7px 13px", borderRadius: 7, border: "none", background: disabled ? C.g300 : cs[v] || C.red, color: C.w, fontSize: small ? 10 : 12, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>{I && <I size={small ? 11 : 13} />}{children}</button>;
+}
+/* === EDDY SOUPORT — ASISTENTE VIRTUAL CHATBOT === */
+const EDDY_KB = [
+  { tags: ["que es", "que hace", "para que sirve", "sistekore", "sos core", "que es esto", "esta plataforma"], a: "SisteKore es una plataforma SaaS para gestión de tickets y operación técnica asistida con IA. Centraliza tickets, clientes, seguimiento operativo e insights IA para empresas de soporte técnico y servicios TI — transforma operaciones reactivas en servicios más organizados, trazables y proactivos." },
+  { tags: ["quien creo", "quien hizo", "quien desarrollo", "creador", "fundador", "alexander", "sistemas sos"], a: "SisteKore fue desarrollado por SisteKore, empresa de soporte técnico de Medellín. El director operativo es Alexander Ospina y la directora comercial Erika Julieth. Lo usan ellos mismos todos los días en su operación." },
+  { tags: ["acceder", "entrar", "url", "donde", "como entrar"], a: "Accede en https://sistekore.vercel.app desde cualquier navegador (Chrome, Firefox, Edge, Safari). No necesita instalación. Funciona en computador, tablet y celular." },
+  { tags: ["crear ticket", "nuevo ticket", "registrar ticket", "abrir ticket", "como hago un ticket"], a: "Para crear un ticket: 1) Ve al módulo Tickets. 2) Toca '+ Nuevo Ticket' arriba a la derecha. 3) Selecciona el cliente. 4) Elige categoría e incidente. 5) Agrega descripción. 6) Toca 'Crear'. La IA asigna prioridad automáticamente." },
+  { tags: ["sla", "vencido", "tiempo de respuesta", "tiempo respuesta"], a: "Los SLA son tiempos garantizados según prioridad: 🔴 URGENTE (6h respuesta / 8h resolución), 🟡 MEDIA (8h / 24h), 🔵 NO URGENTE (24h / 72h). Mira los SLA vencidos en Dashboard o en Tickets > tab Vencidos." },
+  { tags: ["asignar tecnico", "asignar técnico", "darle a un tecnico"], a: "Para asignar un técnico: en la columna 'Técnico' de cada ticket sin asignar verás un dropdown 'Asignar'. Selecciona el técnico (Alexander, Amanda, David, Backups). El estado pasa a 'EN PROGRESO' automáticamente." },
+  { tags: ["trazabilidad", "bitacora", "bitácora", "historial ticket", "seguimiento"], a: "La trazabilidad clínica registra cada paso del servicio. Toca el botón 'Trazabilidad' en cualquier ticket. Tipos: 📥 Recepción, 🔍 Diagnóstico, ⚙️ En proceso, 📦 Esperando repuesto, 👤 Pendiente cliente, ✅ Pruebas finales, 🎉 Resuelto, 🚚 Entregado, 🔒 Nota interna." },
+  { tags: ["pedir ayuda", "necesito ayuda", "no se resolver", "escalar", "sos", "help"], a: "Tienes 2 formas de pedir ayuda: 1) En cada ticket activo hay un botón rojo '🆘 SOS' que envía WhatsApp a Alex con TODA la info del ticket. 2) Dentro del modal de Trazabilidad, botón 'Pedir Ayuda' notifica a otro técnico del equipo." },
+  { tags: ["reasignar", "cambiar tecnico", "pasar ticket"], a: "Para reasignar un ticket: abre Trazabilidad → botón naranja '🔄 Reasignar' → elige el técnico nuevo → opcionalmente escribe el motivo → confirma. Al técnico nuevo le llega notificación urgente con el detalle." },
+  { tags: ["resuelto", "entregado", "cerrar ticket", "finalizar"], a: "Workflow: Cuando marques 'Resuelto', el sistema notifica al área Comercial. Cuando alguien marque 'Entregado' (después de coordinar con cliente), el ticket pasa a Resueltos y se programa una encuesta automática a los 8 días." },
+  { tags: ["crear cliente", "nuevo cliente", "registrar cliente", "agregar cliente"], a: "Ve a CRM/Clientes → '+ Nuevo Cliente' → llena nombre y celular (obligatorios), opcionalmente NIT, email, WhatsApp (formato 573001234567), tipo, segmento, plan. Toca 'Guardar'." },
+  { tags: ["insights ia", "insights", "recomendaciones", "ia clientes"], a: "El tab 'Insights IA' del CRM detecta automáticamente: clientes inactivos 30+ días, VIPs sin contacto, clientes en riesgo. Cada insight tiene botón de acción rápida (Reactivar, Agradecer, etc.)." },
+  { tags: ["mensaje ia", "generador ia", "mensaje", "redactar mensaje", "whatsapp ia"], a: "El Generador IA de mensajes está en CRM. Tiene plantillas: 👋 Saludo, 💰 Cobro, 📅 Recordatorio, 🔄 Reactivación, 🙏 Agradecimiento, 👑 VIP, 🛠 Soporte. Genera el mensaje con datos reales y lo envía por Email o WhatsApp." },
+  { tags: ["inventario", "stock", "items", "insumos"], a: "El Inventario es para insumos internos (alcohol, brochas, destornilladores). NO para productos a vender. 4 tabs: Todos, Insumos, Herramientas, Préstamos. Para agregar: '+ Agregar Ítem' → nombre, categoría, cantidad, mínimo, fecha de compra." },
+  { tags: ["prestamo", "préstamo", "prestar herramienta", "tecnico se llevo"], a: "Para prestar una herramienta a un técnico: en la fila del ítem, botón morado 'Prestar' → elige técnico → cantidad → confirmar. Para devolver: en la columna 'Prestado a', botón verde '↩ Devolver'. Todo queda en historial." },
+  { tags: ["manual sos", "base conocimiento", "articulo", "documentar"], a: "Manual SOS es la base de conocimiento técnico. Crear artículo: '+ Nuevo Artículo' → categoría (auto-asigna ícono) → título → contenido en pasos → palabras clave → URL del PDF (opcional, link de Drive). Buscador filtra por título, contenido y palabras clave." },
+  { tags: ["pdf manual", "adjuntar pdf", "subir pdf", "documento"], a: "Para adjuntar PDFs en Manual SOS: 1) Sube el PDF a Google Drive. 2) Clic derecho → Compartir → 'Cualquiera con el enlace'. 3) Copia el link. 4) Pégalo en el campo 'URL del PDF' del artículo. Aparecerá un tag rojo '📄 PDF' en la card." },
+  { tags: ["crear usuario", "nuevo usuario", "agregar persona", "rol"], a: "En Usuarios → '+ Nuevo Usuario' → nombre, rol, email, teléfono. Roles: Dir. Operativo, Dir. Comercial, Dir. Administrativo, Dir. Contable (todos con acceso completo) y los Auxiliares con acceso por área (Operativo, Comercial, Administrativo, Contable)." },
+  { tags: ["notificacion", "campanita", "alerta", "aviso"], a: "Las notificaciones aparecen en la 🔔 arriba a la derecha. Borde azul = info, rojo = urgente, morado = mensaje entre usuarios. Al tocar una notificación, esa se marca como leída individualmente y te lleva al módulo. Las que no abras quedan no leídas." },
+  { tags: ["menu movil", "cerrar menu", "menu celular", "sidebar"], a: "En celular, el menú lateral se abre con el botón ☰. Para cerrarlo: 1) Toca el botón rojo grande 'CERRAR MENÚ' arriba del menú. 2) Toca cualquier opción para navegar (también cierra). 3) Toca la zona oscura a la derecha del menú." },
+  { tags: ["limpiar demo", "borrar datos", "empezar limpio", "datos prueba"], a: "Los datos demo se reinician al refrescar. En la versión 2.0 con Supabase los datos serán persistentes." },
+  { tags: ["pierdo datos", "se borra", "refrescar", "guardar"], a: "Por ahora (versión 1.0), los datos están en memoria del navegador y se reinician al refrescar. Esto se solucionará cuando migremos a Supabase (próxima versión 2.0)." },
+  { tags: ["celular", "movil", "telefono"], a: "Sí, SisteKore es 100% responsive y funciona en celular. Los KPIs se ven en 2 columnas, las tablas tienen scroll horizontal, los modales aparecen casi pantalla completa. El menú lateral se desliza con el botón ☰." },
+  { tags: ["habeas data", "mis datos", "descargar todo", "backup completo"], a: "En cumplimiento de la Ley 1581 de Habeas Data, puedes descargar TODOS tus datos cuando quieras desde el módulo Usuarios → 'Descargar mis datos (JSON)'." },
+  { tags: ["importar", "restaurar", "subir backup"], a: "Para importar/restaurar un backup: Administración → '💾 Exportar/Importar Datos' → sección 'Importar Datos' → seleccionar archivo .json → confirmar. ⚠️ Reemplaza TODOS los datos actuales con los del archivo." },
+  { tags: ["exportar excel", "descargar excel", "csv modulo"], a: "Cada módulo tiene su botón 'Exportar Excel' arriba a la derecha. Filtra por rango de fechas (atajos: Hoy, 7 días, 30 días, año actual) y descarga en formato CSV abrible en Excel/Google Sheets con número consecutivo y headers en español." },
+  { tags: ["portal cliente", "vista cliente", "como acceden clientes"], a: "El Portal Cliente es la vista pública para tus clientes. Acceden con el botón 'Portal Cliente' arriba en el header. Pueden: 1) Reportar incidente nuevo → se crea ticket automático. 2) Consultar ticket existente con número o cédula. 3) Calificar el servicio." },
+  { tags: ["reportar problema", "crear desde portal", "cliente reporta"], a: "Cuando un cliente reporta desde el Portal: llena nombre, teléfono, descripción → se crea ticket automático con prioridad asignada por IA → se le da número de ticket → llega notificación al equipo interno." },
+  { tags: ["calificar servicio", "rating", "estrellas"], a: "El cliente puede calificar su servicio: 1) Después de marcar 'Entregado', a los 8 días llega encuesta automática por email/WhatsApp. 2) En el Portal, buscando su ticket si está resuelto. Califica de 1 a 5 estrellas y deja comentario opcional." },
+  { tags: ["login", "contraseña", "autenticacion", "sesion"], a: "Por ahora (versión 1.0) la autenticación es por selección de usuario en el menú lateral (sin contraseña). En la versión 2.0 con Supabase tendremos: login con email y contraseña, login con Google, recuperación de contraseña y sesión persistente." },
+  { tags: ["soporte humano", "ayuda real", "hablar con persona", "contactar"], a: "Para hablar con una persona real: WhatsApp 315 742 0568 (Alexander) o 301 528 7543 (soporte técnico). Email: sistekore@gmail.com. También puedes usar el botón 'SOS' en cada ticket para enviar info completa al equipo." },
+  { tags: ["precio", "cuanto cuesta", "planes", "suscripcion"], a: "Por ahora SisteKore es gratuito (versión beta). Cuando lancemos como SaaS comercial habrá: 🆓 FREE (1 usuario, 1 módulo), 💼 STARTER (~$20K COP/mes, 3 usuarios), 🚀 PRO (~$60K COP/mes, ilimitado), 🏢 BUSINESS (multi-empresa)." },
+  { tags: ["calendario", "eventos", "agendar", "cita"], a: "En Calendario → '+ Nuevo Evento' → llena título, tipo (Visita/Interno o Comercial/Seguimiento), cliente opcional, fecha y hora, responsable, notas. Tiene 2 tabs: 🔧 Operativo (técnicos) y 💼 Comercial (ventas). Al abrir un evento, hay botón 'Agregar a Google Calendar'." },
+  { tags: ["dashboard", "kpi", "indicadores"], a: "El Dashboard muestra 8 KPIs clickeables: 🎫 Tickets activos, ⚠️ SLA vencidos, ✅ Resueltos, 📈 Pipeline, ⭐ Satisfacción, 📦 Stock bajo, ↑ Ingresos, 📊 Balance. Cada uno te lleva a su módulo. Abajo hay listas de Tickets Activos y Auditoría Reciente, también clickeables." },
+  { tags: ["roles", "permisos", "quien ve que"], a: "Hay 8 roles: Dir. Operativo, Dir. Comercial, Dir. Administrativo, Dir. Contable (acceso completo) y Aux. Operativo (Tickets, Calendario, Manual), Aux. Comercial (Tickets, CRM, Pipeline, Calendario, Inventario), Aux. Administrativo (Tickets, CRM, Calendario, Admin), Aux. Contable (Contabilidad, Reportes IA)." }
+];
+
+// Eddy Suport — robot chibi 3D-style · cabeza dome casco + cuerpo redondo
+// Inspirado en estilo EVE/Pixar: blanco celeste, ojos negros brillantes,
+// casco con visor, look amigable y polished
+function EddyIcon({ size = 32, color, withShadow = false, trackMouse = false }) {
+  const svgRef = useRef(null);
+  const leftPupilRef = useRef(null);
+  const rightPupilRef = useRef(null);
+
+  // Eye-tracking: las pupilas y los brillitos se mueven hacia donde está el cursor.
+  // Usamos refs + setAttribute para evitar re-renders de React en cada mousemove (60fps).
+  useEffect(() => {
+    if (!trackMouse) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    function onMove(e) {
+      const rect = svg.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const scaleX = rect.width / 80;
+      const scaleY = rect.height / 80;
+      // Centro de cada ojo en coordenadas de pantalla
+      const leftEyeCx  = rect.left + 32 * scaleX;
+      const leftEyeCy  = rect.top  + 35 * scaleY;
+      const rightEyeCx = rect.left + 48 * scaleX;
+      const rightEyeCy = rect.top  + 35 * scaleY;
+      const MAX = 2.4; // desplazamiento máx en unidades del viewBox (cabe dentro del blanco del ojo)
+
+      function offsetFor(eyeX, eyeY) {
+        const dx = e.clientX - eyeX;
+        const dy = e.clientY - eyeY;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) return [0, 0];
+        // Saturación: a 220px o más, ojo totalmente al borde
+        const t = Math.min(1, dist / 220);
+        const f = t * MAX;
+        return [(dx / dist) * f, (dy / dist) * f];
+      }
+
+      const [lox, loy] = offsetFor(leftEyeCx, leftEyeCy);
+      const [rox, roy] = offsetFor(rightEyeCx, rightEyeCy);
+      if (leftPupilRef.current)  leftPupilRef.current.setAttribute("transform",  `translate(${lox.toFixed(2)} ${loy.toFixed(2)})`);
+      if (rightPupilRef.current) rightPupilRef.current.setAttribute("transform", `translate(${rox.toFixed(2)} ${roy.toFixed(2)})`);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    // Soporte táctil: también seguir el dedo en móvil
+    function onTouch(e) {
+      if (e.touches && e.touches[0]) onMove(e.touches[0]);
+    }
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onTouch);
+    };
+  }, [trackMouse]);
+
+  return (
+    <svg ref={svgRef} width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <defs>
+        {/* Casco/cabeza — gradiente azul claro arriba, blanco abajo */}
+        <linearGradient id="eddyHead3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#A5C9FF" />
+          <stop offset="0.5" stopColor="#7BA9F5" />
+          <stop offset="1" stopColor="#5B8FE8" />
+        </linearGradient>
+        {/* Cuerpo — más claro, gradient blanco-azul */}
+        <linearGradient id="eddyBody3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#C5DDFF" />
+          <stop offset="0.5" stopColor="#9CC0F8" />
+          <stop offset="1" stopColor="#6B9DE5" />
+        </linearGradient>
+        {/* Visor / pantalla del casco */}
+        <linearGradient id="eddyVisor" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1E3A8A" />
+          <stop offset="0.5" stopColor="#0F1E4D" />
+          <stop offset="1" stopColor="#1E3A8A" />
+        </linearGradient>
+        {/* Highlight glossy del casco */}
+        <radialGradient id="eddyHelmShine" cx="0.35" cy="0.2" r="0.4">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.85" />
+          <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* Sombra opcional bajo el robot */}
+      {withShadow && <ellipse cx="40" cy="76" rx="22" ry="2.5" fill="#000" opacity="0.14" />}
+
+      {/* Antena con bolita roja */}
+      <line x1="40" y1="6" x2="40" y2="13" stroke="#1E3A8A" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="40" cy="5" r="3.2" fill="#EF4444" />
+      <circle cx="38.8" cy="3.8" r="1.2" fill="#FCA5A5" opacity="0.85" />
+
+      {/* CUERPO — pequeño, redondeado, debajo del casco */}
+      <path d="M 28 50
+               C 24 50, 22 54, 22 58
+               L 22 68
+               C 22 72, 26 74, 30 74
+               L 50 74
+               C 54 74, 58 72, 58 68
+               L 58 58
+               C 58 54, 56 50, 52 50 Z"
+        fill="url(#eddyBody3)" />
+
+      {/* Línea de unión cuerpo (separación cintura) */}
+      <line x1="22" y1="62" x2="58" y2="62" stroke="#5B8FE8" strokeWidth="0.8" opacity="0.5" />
+
+      {/* Bracitos a los lados del cuerpo */}
+      <ellipse cx="18" cy="60" rx="4" ry="6" fill="url(#eddyBody3)" />
+      <ellipse cx="62" cy="60" rx="4" ry="6" fill="url(#eddyBody3)" />
+
+      {/* CASCO/CABEZA — dome grande arriba */}
+      <path d="M 40 12
+               C 22 12, 14 22, 14 36
+               C 14 46, 18 52, 22 53
+               L 58 53
+               C 62 52, 66 46, 66 36
+               C 66 22, 58 12, 40 12 Z"
+        fill="url(#eddyHead3)" />
+
+      {/* Borde inferior del casco (línea separadora) */}
+      <ellipse cx="40" cy="51" rx="22" ry="2.5" fill="#1E3A8A" opacity="0.3" />
+
+      {/* VISOR / pantalla — área oscura donde van los ojos */}
+      <path d="M 22 30
+               C 22 24, 28 22, 40 22
+               C 52 22, 58 24, 58 30
+               L 58 42
+               C 58 46, 52 48, 40 48
+               C 28 48, 22 46, 22 42 Z"
+        fill="url(#eddyVisor)" />
+
+      {/* OJOS — grandes blancos brillantes */}
+      <ellipse cx="32" cy="35" rx="5.5" ry="6" fill="#FFFFFF" />
+      <ellipse cx="48" cy="35" rx="5.5" ry="6" fill="#FFFFFF" />
+
+      {/* OJO IZQUIERDO — pupila + brillitos agrupados, se mueven juntos siguiendo el cursor */}
+      <g ref={leftPupilRef} style={{ transition: trackMouse ? "transform 0.08s linear" : "none" }}>
+        <ellipse cx="32" cy="36" rx="3" ry="3.5" fill="#0F1E4D" />
+        <circle cx="30.8" cy="34.5" r="1.4" fill="#FFFFFF" />
+        <circle cx="33.5" cy="37.5" r="0.7" fill="#FFFFFF" opacity="0.8" />
+      </g>
+      {/* OJO DERECHO */}
+      <g ref={rightPupilRef} style={{ transition: trackMouse ? "transform 0.08s linear" : "none" }}>
+        <ellipse cx="48" cy="36" rx="3" ry="3.5" fill="#0F1E4D" />
+        <circle cx="46.8" cy="34.5" r="1.4" fill="#FFFFFF" />
+        <circle cx="49.5" cy="37.5" r="0.7" fill="#FFFFFF" opacity="0.8" />
+      </g>
+
+      {/* Glossy highlight del casco — efecto pulido */}
+      <ellipse cx="32" cy="22" rx="14" ry="8" fill="url(#eddyHelmShine)" />
+
+      {/* Pequeña sonrisa en el cuerpo (opcional, debajo del visor) */}
+      <path d="M 36 56 Q 40 58 44 56" stroke="#1E3A8A" strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.45" />
+
+      {/* Mini detalle: botón circular en el pecho */}
+      <circle cx="40" cy="68" r="2.5" fill="#1E3A8A" opacity="0.25" />
+      <circle cx="40" cy="68" r="1.2" fill="#5BA8FF" opacity="0.7" />
+    </svg>
+  );
+}
+
+/* === INSIGHTS IA — Componente unificado para todos los módulos === */
+// Cada insight: { tone: 'warn'|'info'|'ok'|'alert', icon, title, text, detail?, action? }
+// `extra` opcional: lista extendida que se muestra al "Ver todas las recomendaciones"
+function InsightsIA({ items = [], moduleName = "este módulo", extra = [], variant = "card" }) {
+  const [openAll, setOpenAll] = useState(false);
+  const [openDetail, setOpenDetail] = useState(null);
+  const tones = {
+    warn:  { bg: "#FEF3C7", c: "#F59E0B" },
+    info:  { bg: "#DBEAFE", c: "#3B82F6" },
+    ok:    { bg: "#D1FAE5", c: "#10B981" },
+    alert: { bg: "#FEE2E2", c: "#EF4444" },
+    purple:{ bg: "#EDE9FE", c: "#7C3AED" }
+  };
+  const all = [...items, ...extra];
+
+  const cardWrap = variant === "card"
+    ? { background: "#FFFFFF", borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: "0 4px 20px rgba(15,23,42,0.06)" }
+    : {};
+
+  return (
+    <div style={cardWrap}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0E2A52", margin: 0 }}>Insights IA</h3>
+        <span style={{ fontSize: 12 }}>✦</span>
+      </div>
+      {items.map((ins, i) => {
+        const cfg = tones[ins.tone] || tones.info;
+        const Icon = ins.icon || AlertTriangle;
+        return (
+          <div key={i}
+            onClick={() => { if (ins.action) ins.action(); else setOpenDetail(ins); }}
+            style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid #EEF2F7` : "none", cursor: "pointer", transition: "all .15s" }}
+            onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon size={15} strokeWidth={2} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#0E2A52", marginBottom: 2 }}>{ins.title}</div>
+              <div style={{ fontSize: 10.5, color: "#64748B", lineHeight: 1.4 }}>{ins.text}</div>
+              <div style={{ fontSize: 10, color: "#2563FF", fontWeight: 600, marginTop: 4 }}>Ver detalle →</div>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ borderTop: `1px solid #EEF2F7`, paddingTop: 10, marginTop: 6 }}>
+        <button onClick={() => setOpenAll(true)} style={{ background: "none", border: "none", color: "#2563FF", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+          Ver todas las recomendaciones →
+        </button>
+      </div>
+
+      {/* MODAL: Ver todas las recomendaciones */}
+      <Mo open={openAll} onClose={() => setOpenAll(false)} title={`✦ Insights IA — ${moduleName}`}>
+        <div>
+          <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid rgba(124,58,237,0.18)`, fontSize: 11.5, color: "#475569" }}>
+            ✦ <strong style={{ color: "#7C3AED" }}>SisteKore IA está monitoreando tu operación 24/7.</strong> Estas son TODAS las recomendaciones detectadas para {moduleName}, priorizadas por impacto.
+          </div>
+          {all.length === 0 && <div style={{ padding: 30, textAlign: "center", color: "#94A3B8", fontSize: 12 }}>No hay recomendaciones adicionales por ahora.</div>}
+          {all.map((ins, i) => {
+            const cfg = tones[ins.tone] || tones.info;
+            const Icon = ins.icon || AlertTriangle;
+            return (
+              <div key={i}
+                onClick={() => { setOpenAll(false); if (ins.action) ins.action(); else setOpenDetail(ins); }}
+                style={{ display: "flex", gap: 12, padding: 12, borderRadius: 11, border: `1px solid #EEF2F7`, marginBottom: 8, cursor: "pointer", background: "#FFFFFF", transition: "all .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 6px 16px -2px ${cfg.c}25`; e.currentTarget.style.borderColor = `${cfg.c}40`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#EEF2F7"; }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0E2A52" }}>{ins.title}</div>
+                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 3, lineHeight: 1.45 }}>{ins.text}</div>
+                  <div style={{ fontSize: 10.5, color: cfg.c, fontWeight: 700, marginTop: 5 }}>Ver detalle completo →</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Mo>
+
+      {/* MODAL: Ver detalle de un insight individual */}
+      <Mo open={!!openDetail} onClose={() => setOpenDetail(null)} title={openDetail?.title || ""}>
+        {openDetail && (() => {
+          const cfg = tones[openDetail.tone] || tones.info;
+          const Icon = openDetail.icon || AlertTriangle;
+          return (
+            <div>
+              <div style={{ background: cfg.bg, borderRadius: 12, padding: 14, marginBottom: 14, display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FFFFFF", color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon size={18} strokeWidth={2} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0E2A52" }}>{openDetail.title}</div>
+                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>{openDetail.text}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.55, marginBottom: 14 }}>
+                {openDetail.detail || "SisteKore IA detectó este patrón en tus datos. Te recomendamos revisar el módulo correspondiente para tomar acción y resolver la situación antes de que escale."}
+              </div>
+              <div style={{ background: "#F5F3FF", borderRadius: 10, padding: 12, border: `1px solid rgba(124,58,237,0.18)`, fontSize: 11, color: "#475569", marginBottom: 14 }}>
+                ✦ <strong style={{ color: "#7C3AED" }}>Recomendación:</strong> {openDetail.recommendation || "Revisa el módulo y aplica las acciones sugeridas. Si necesitas más contexto, abre el chat con Eddy en la esquina inferior derecha."}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button onClick={() => setOpenDetail(null)} style={{ padding: "9px 14px", borderRadius: 9, border: `1px solid #E2E8F0`, background: "#FFFFFF", color: "#475569", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+                {openDetail.action && (
+                  <button onClick={() => { setOpenDetail(null); openDetail.action(); }} style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, #7C3AED, #2563FF)`, color: "#FFFFFF", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>Ir al módulo →</button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </Mo>
+    </div>
+  );
+}
+
+function EddySouport({ inPortal = false, d = null }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { from: "bot", text: "¡Hola! 👋 Soy *Eddy Support*, tu asistente técnico IA para operaciones TI. Pregúntame sobre tickets, clientes, inventario, SLA o soluciones técnicas.", time: Date.now() }
+  ]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  function normalizar(s) {
+    return (s || "")
+      .toLowerCase()
+      .normalize("NFD").replace(/\p{M}/gu, "")  // quitar tildes (á→a, é→e, etc.)
+      .replace(/[¿?¡!.,;:'"()\[\]{}]/g, "")  // quitar puntuación
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Palabras "raíz" comunes en español — para que creo/crear/creas/creamos sean equivalentes
+  function raiz(palabra) {
+    if (palabra.length <= 4) return palabra;
+    // Quitar terminaciones verbales y plurales comunes
+    return palabra
+      .replace(/(amos|emos|imos|aron|eron|ieron|ando|iendo|ado|ido|ada|ida|ar|er|ir|as|es|os|an|en|in|a|e|o)$/i, "");
+  }
+
+  function findAnswer(question) {
+    const q = normalizar(question);
+    if (!q) return null;
+    const qWords = q.split(/\s+/).filter(w => w.length > 1);
+    const qRoots = qWords.map(raiz);
+
+    const scored = EDDY_KB.map(topic => {
+      let score = 0;
+      topic.tags.forEach(tag => {
+        const tagNorm = normalizar(tag);
+        // Coincidencia exacta de frase (gana mucho)
+        if (q.includes(tagNorm)) score += 20;
+        // Coincidencia palabra por palabra (raíz)
+        const tagWords = tagNorm.split(/\s+/).filter(w => w.length > 1);
+        tagWords.forEach(tw => {
+          const twRoot = raiz(tw);
+          // Match exacto de palabra
+          if (qWords.includes(tw)) score += 3;
+          // Match por raíz (creo↔crear)
+          else if (twRoot.length >= 3 && qRoots.includes(twRoot)) score += 2;
+          // Match por inclusión (ticket↔tickets)
+          else if (tw.length >= 4 && qWords.some(w => w.includes(tw) || tw.includes(w))) score += 1;
+        });
+      });
+      return { topic, score };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+
+    if (scored.length > 0 && scored[0].score >= 2) return scored[0].topic.a;
+    return null;   // sin match local → pasa a la CAPA 2 (modelo de lenguaje)
+  }
+
+  // Resume el estado real de la operación para dárselo al modelo de lenguaje.
+  // Sin esto Gemini respondería en genérico; con esto responde sobre NUESTRA operación.
+  function construirContexto() {
+    try {
+      if (!d) return "";
+      const tk = d.tickets || [];
+      const sv = d.solved || [];
+      const cl = d.clients || [];
+      const iv = d.inv || [];
+
+      const urgentes    = tk.filter(t => t.pri === "URGENTE");
+      const enProgreso  = tk.filter(t => t.st === "EN PROGRESO");
+      const pendientes  = tk.filter(t => t.st === "PENDIENTE");
+      const sinTecnico  = tk.filter(t => !t.tech);
+      const stockBajo   = iv.filter(i => Number(i.qty) <= Number(i.min || 0));
+      const prestados   = iv.filter(i => (i.loans || []).length > 0);
+
+      const nombreCliente = cid => (cl.find(c => c.id === cid) || {}).name || cid;
+
+      return [
+        `Tickets abiertos: ${tk.length} (${enProgreso.length} en progreso, ${pendientes.length} pendientes)`,
+        `Tickets resueltos históricos: ${sv.length}`,
+        `Tickets urgentes: ${urgentes.length}`,
+        urgentes.length
+          ? "Detalle urgentes: " + urgentes.slice(0, 5)
+              .map(t => `${t.id} · ${nombreCliente(t.cid)} · ${t.inc} · ${t.st}`).join(" | ")
+          : "",
+        sinTecnico.length ? `Tickets sin técnico asignado: ${sinTecnico.length}` : "",
+        `Clientes registrados: ${cl.length}`,
+        `Insumos en inventario: ${iv.length}`,
+        stockBajo.length
+          ? "Insumos con stock bajo: " + stockBajo.slice(0, 6).map(i => `${i.name} (${i.qty}/${i.min})`).join(", ")
+          : "Inventario sin alertas de stock",
+        prestados.length ? `Insumos prestados a técnicos: ${prestados.length}` : "",
+        `Artículos en el Centro de Conocimiento: ${(d.kb || []).length}`,
+      ].filter(Boolean).join("\n");
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // Arquitectura de 3 capas:
+  //   1. Base de conocimiento local  → instantánea, gratis, precisa para preguntas frecuentes
+  //   2. Modelo de lenguaje (Gemini) → entra cuando la 1 no encuentra
+  //   3. Escalamiento a humano       → si la 2 falla o el caso lo requiere
+  async function send(text) {
+    const userText = text || input;
+    if (!userText.trim()) return;
+
+    setMessages(prev => [...prev, { from: "user", text: userText, time: Date.now() }]);
+    setInput("");
+    setTyping(true);
+
+    // --- CAPA 1: base de conocimiento local ---
+    const local = findAnswer(userText);
+    if (local) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, { from: "bot", text: local, time: Date.now() }]);
+        setTyping(false);
+      }, 500);
+      return;
+    }
+
+    // --- CAPA 2: modelo de lenguaje con el contexto de la operación ---
+    try {
+      const r = await fetch("/api/eddy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta: userText, contexto: construirContexto() }),
+      });
+      const resp = await r.json();
+
+      setMessages(prev => [...prev, {
+        from: "bot",
+        time: Date.now(),
+        text: resp && resp.respuesta
+          ? "🧠 " + resp.respuesta
+          : "No encontré esa respuesta en mi base de conocimiento y el modelo no está disponible ahora. Escala a soporte humano con el botón verde de abajo. 👇",
+      }]);
+    } catch (e) {
+      // --- CAPA 3: si todo falla, al humano ---
+      setMessages(prev => [...prev, {
+        from: "bot",
+        time: Date.now(),
+        text: "Estoy sin conexión al modelo en este momento 🤔. Intenta con palabras clave como 'tickets', 'clientes', 'inventario' o 'SLA', o contacta soporte humano con el botón verde de abajo. 👇",
+      }]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  const sugerencias = [
+    "Resume los tickets críticos de hoy",
+    "¿Qué debo atender primero?",
+    "Sugiere solución para este incidente",
+    "Redacta respuesta para el cliente",
+    "Explícame por qué hay SLA vencidos"
+  ];
+
+  // Posición: bottom-right siempre. En Portal va más arriba para no chocar con el botón de WhatsApp
+  const posStyle = inPortal
+    ? { position: "fixed", bottom: 88, right: 20, zIndex: 1001 }
+    : { position: "fixed", bottom: 20, right: 20, zIndex: 1001 };
+
+  return (
+    <>
+      {/* Botón flotante */}
+      {!open && (
+        <button onClick={() => setOpen(true)} title="Eddy Support — Asistente técnico IA" style={{
+          ...posStyle,
+          background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+          color: C.w,
+          border: `3px solid ${C.w}`,
+          borderRadius: "50%",
+          width: 64,
+          height: 64,
+          cursor: "pointer",
+          boxShadow: "0 6px 20px rgba(0,0,0,.35)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          fontFamily: "inherit",
+          animation: "float-bounce 2.5s ease-in-out infinite"
+        }}>
+          <EddyIcon size={36} color={C.w} />
+        </button>
+      )}
+
+      {/* Ventana de chat */}
+      {open && (
+        <div style={{
+          ...posStyle,
+          width: 360,
+          maxWidth: "calc(100vw - 40px)",
+          height: 540,
+          maxHeight: "calc(100vh - 40px)",
+          background: C.w,
+          borderRadius: 16,
+          boxShadow: "0 20px 50px rgba(0,0,0,.35)",
+          border: `1px solid ${C.g200}`,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden"
+        }}>
+          {/* Header */}
+          <div style={{ background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, color: C.w }}>
+            <div style={{ width: 42, height: 42, borderRadius: "50%", background: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <EddyIcon size={26} color={C.purple} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>Eddy Support</div>
+              <div style={{ fontSize: 10, opacity: 0.9, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10D862", display: "inline-block", boxShadow: "0 0 6px #10D862" }} />
+                <span>En línea · Asistente técnico IA para operaciones TI</span>
+              </div>
+            </div>
+            <button onClick={() => setOpen(false)} title="Cerrar" style={{ background: "rgba(255,255,255,.2)", border: "none", color: C.w, borderRadius: 6, width: 28, height: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontFamily: "inherit", padding: 0 }}>✕</button>
+          </div>
+
+          {/* Mensajes */}
+          <div style={{ flex: 1, overflowY: "auto", padding: 12, background: C.g50, display: "flex", flexDirection: "column", gap: 8 }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.from === "user" ? "flex-end" : "flex-start", animation: "fadeIn .25s ease" }}>
+                <div style={{
+                  maxWidth: "82%",
+                  padding: "9px 12px",
+                  borderRadius: m.from === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                  background: m.from === "user" ? C.blue : C.w,
+                  color: m.from === "user" ? C.w : C.navy,
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  boxShadow: "0 1px 3px rgba(0,0,0,.08)",
+                  whiteSpace: "pre-wrap"
+                }}>{m.text}</div>
+              </div>
+            ))}
+            {typing && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 4px", background: C.w, fontSize: 14, color: C.g500, boxShadow: "0 1px 3px rgba(0,0,0,.08)" }}>
+                  <span style={{ animation: "pulse-sos 1.2s ease-in-out infinite" }}>● ● ●</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Sugerencias rápidas */}
+          {messages.length <= 2 && (
+            <div style={{ padding: "8px 12px 4px", background: C.w, borderTop: `1px solid ${C.g100}` }}>
+              <div style={{ fontSize: 9.5, color: C.g500, marginBottom: 5, fontWeight: 600 }}>💡 Preguntas rápidas:</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {sugerencias.map((s, i) => (
+                  <button key={i} onClick={() => send(s)} style={{ padding: "4px 9px", borderRadius: 12, border: `1px solid ${C.purple}30`, background: `${C.purple}08`, color: C.purple, fontSize: 10, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{ padding: 10, background: C.w, borderTop: `1px solid ${C.g100}`, display: "flex", gap: 6 }}>
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") send(); }}
+              placeholder="Pregúntale a Eddy sobre tickets, clientes, inventario, SLA o soluciones técnicas..."
+              style={{ flex: 1, padding: "9px 12px", borderRadius: 20, border: `1px solid ${C.g200}`, fontSize: 12, outline: "none", fontFamily: "inherit" }}
+            />
+            <button onClick={() => send()} disabled={!input.trim()} style={{ width: 38, height: 38, borderRadius: "50%", border: "none", background: input.trim() ? `linear-gradient(135deg, ${C.purple}, ${C.blue})` : C.g300, color: C.w, cursor: input.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+              <Send size={15} />
+            </button>
+          </div>
+
+          {/* Footer escalar */}
+          <a href="https://wa.me/573157420568?text=Hola,%20Eddy%20no%20pudo%20resolver%20mi%20duda%20y%20necesito%20ayuda%20humana" target="_blank" rel="noopener noreferrer" style={{ padding: "8px 12px", background: "#25D36610", color: "#25D366", fontSize: 10.5, fontWeight: 600, textAlign: "center", textDecoration: "none", borderTop: `1px solid ${C.g100}`, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+            <WAIcon size={12} color="#25D366" /> ¿No te resolví? Hablar con humano →
+          </a>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* === EXPORTADOR REUTILIZABLE con filtro por fechas === */
+function ExportButton({ data, headers, filename, dateField = "date", label = "Exportar Excel", color = null }) {
+  const [open, setOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [from, setFrom] = useState(monthAgo);
+  const [to, setTo] = useState(today);
+  const c = color || C.ok;
+
+  const filtered = (data || []).filter(item => {
+    const itemDate = item[dateField] || item.at || item.dt || item.ts || item.createdAt || "";
+    const dateOnly = (typeof itemDate === "string" ? itemDate : "").slice(0, 10);
+    if (!dateOnly) return true; // sin fecha → incluir
+    return dateOnly >= from && dateOnly <= to;
+  });
+
+  function descargar() {
+    if (filtered.length === 0) { alert("No hay registros en ese rango de fechas"); return; }
+    const SEP = ";"; // separador semicolon — Excel español lo entiende automático
+    const escape = (val) => {
+      if (val === null || val === undefined) return "";
+      if (typeof val === "object") return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
+      const str = String(val);
+      if (str.includes(SEP) || str.includes("\"") || str.includes("\n") || str.includes(",")) return `"${str.replace(/"/g, '""')}"`;
+      return str;
+    };
+    // Cabecera con # consecutivo + columnas
+    const headerRow = ["N°", ...headers.map(h => h.label || h.key)].join(SEP);
+    // Filas de datos con número consecutivo
+    const dataRows = filtered.map((item, i) => [i + 1, ...headers.map(h => escape(typeof h === "string" ? item[h] : item[h.key]))].join(SEP));
+    // Metadata en celdas separadas (cada línea = 1 fila Excel)
+    const metaRows = [
+      `Reporte SisteKore${SEP}${label}`,
+      `Desde${SEP}${from}`,
+      `Hasta${SEP}${to}`,
+      `Total registros${SEP}${filtered.length}`,
+      `Generado${SEP}${new Date().toLocaleString("es-CO")}`,
+      `Empresa${SEP}SisteKore — Medellin Colombia`,
+      `` // línea vacía antes de la tabla
+    ].join("\n");
+    // sep=; le dice a Excel que use ; como separador (funciona en español e inglés)
+    const csv = "﻿sep=" + SEP + "\n" + metaRows + "\n" + headerRow + "\n" + dataRows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename}_${from}_a_${to}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} title={`Exportar ${label} a Excel filtrado por fechas`} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 6, border: `1px solid ${c}40`, background: `${c}10`, color: c, fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+        <Download size={11} /> Exportar Excel
+      </button>
+      <Mo open={open} onClose={() => setOpen(false)} title={`📥 Exportar ${label}`}>
+        <div style={{ background: `${c}08`, borderRadius: 7, padding: 10, marginBottom: 12, border: `1px solid ${c}30`, fontSize: 11, color: C.g600 }}>
+          📅 Selecciona el rango de fechas. Se exportará un archivo .CSV (Excel-compatible) con los registros del periodo.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+          <Fl label="Desde">
+            <input style={is} type="date" value={from} onChange={e => setFrom(e.target.value)} />
+          </Fl>
+          <Fl label="Hasta">
+            <input style={is} type="date" value={to} onChange={e => setTo(e.target.value)} />
+          </Fl>
+        </div>
+        <div style={{ background: C.g50, borderRadius: 7, padding: 10, marginBottom: 12, fontSize: 11, color: C.g600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>📊 Registros en el rango:</span>
+          <strong style={{ color: filtered.length > 0 ? C.ok : C.err, fontSize: 14, fontFamily: "monospace" }}>{filtered.length}</strong>
+        </div>
+        {/* Atajos rápidos de fechas */}
+        <div style={{ fontSize: 9.5, color: C.g500, marginBottom: 5 }}>Atajos:</div>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
+          {[
+            { l: "Hoy", days: 0 },
+            { l: "Últimos 7 días", days: 7 },
+            { l: "Últimos 30 días", days: 30 },
+            { l: "Últimos 90 días", days: 90 },
+            { l: "Año actual", custom: true }
+          ].map((s, i) => (
+            <button key={i} onClick={() => {
+              if (s.custom) {
+                const y = new Date().getFullYear();
+                setFrom(`${y}-01-01`); setTo(today);
+              } else {
+                setFrom(new Date(Date.now() - s.days * 86400000).toISOString().slice(0, 10));
+                setTo(today);
+              }
+            }} style={{ padding: "4px 9px", borderRadius: 5, border: `1px solid ${C.g200}`, background: C.g50, fontSize: 10, color: C.g600, cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+          ))}
+        </div>
+        <button onClick={descargar} disabled={filtered.length === 0} style={{ background: filtered.length > 0 ? c : C.g300, color: C.w, border: "none", borderRadius: 7, padding: "10px 16px", fontSize: 12, fontWeight: 700, cursor: filtered.length > 0 ? "pointer" : "not-allowed", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
+          <Download size={13} /> Descargar {filtered.length} registros (Excel)
+        </button>
+      </Mo>
+    </>
+  );
+}
+
+/* === GENERADOR IA DE MENSAJES (reutilizable) === */
+const MSG_TEMPLATES = [
+  { id: "saludo", l: "Saludo / Check-in general", emoji: "👋", tone: "Cordial" },
+  { id: "cobro", l: "Recordatorio de pago pendiente", emoji: "💰", tone: "Profesional" },
+  { id: "encuesta", l: "Solicitar calificación del servicio", emoji: "⭐", tone: "Amigable" },
+  { id: "cotizacion", l: "Enviar cotización / propuesta", emoji: "📄", tone: "Comercial" },
+  { id: "recordatorio", l: "Recordatorio de cita / visita", emoji: "📅", tone: "Cordial" },
+  { id: "reactivacion", l: "Reactivar cliente inactivo", emoji: "🔄", tone: "Cercano" },
+  { id: "agradecimiento", l: "Agradecimiento por la confianza", emoji: "🙏", tone: "Cálido" },
+  { id: "vip", l: "Check-in cliente VIP", emoji: "👑", tone: "Premium" },
+  { id: "soporte", l: "Notificación de soporte / actualización", emoji: "🛠", tone: "Técnico" }
+];
+
+function generateMessage(type, ctx) {
+  // ctx: { client, ticket, deal, event, technician, amount, dueDate, rating, channel }
+  const c = ctx.client || {};
+  const name = c.contact || c.name || "estimado cliente";
+  const empresa = c.name || "";
+  const channel = ctx.channel || "email";
+  const isWA = channel === "wa";
+  // En WhatsApp se usa formato más conciso, sin asunto formal
+  switch (type) {
+    case "saludo":
+      return {
+        subject: `${empresa} — SisteKore te saluda`,
+        body: isWA
+          ? `¡Hola ${name}! 👋 Te escribo desde SisteKore Solo quería saludarte y saber si todo va bien con tus equipos. ¿Algo en lo que podamos apoyarte? Saludos.`
+          : `Hola ${name},\n\nReciba un cordial saludo desde SisteKore\n\nQueríamos comunicarnos para saber cómo va todo con sus equipos y si hay algo en lo que podamos apoyarles.\n\nNuestro equipo técnico siempre está disponible para resolver cualquier inquietud.\n\nQuedamos atentos.\n\nSaludos cordiales,\nEquipo SisteKore\n📞 315 742 0568`
+      };
+    case "cobro":
+      const monto = ctx.amount ? `$${ctx.amount.toLocaleString("es-CO")}` : "el saldo pendiente";
+      return {
+        subject: `Recordatorio de pago — ${empresa}`,
+        body: isWA
+          ? `Hola ${name}, te recordamos que tienes un saldo pendiente con SisteKore de ${monto}. ¿Podríamos agendar el pago esta semana? Gracias por tu atención. 🙏`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nLe escribimos para recordarle amablemente que tiene un saldo pendiente con SisteKore por valor de ${monto}.\n\nLe agradecemos confirmar fecha de pago para mantener al día su cuenta.\n\nMedios de pago disponibles:\n• Transferencia: Bancolombia 123-456789\n• Nequi/Daviplata: 315 742 0568\n• Efectivo en oficina\n\nQuedamos atentos.\n\nSaludos cordiales,\nÁrea Administrativa\nSisteKore`
+      };
+    case "encuesta":
+      const tk = ctx.ticket?.id || "";
+      const sv = ctx.ticket?.inc || "su servicio";
+      const tech = ctx.ticket?.tech || "nuestro equipo";
+      return {
+        subject: `Califica tu servicio SisteKore ${tk}`,
+        body: isWA
+          ? `¡Hola ${name}! 👋 Gracias por confiar en *SisteKore*. Tu servicio "${sv}" fue resuelto por ${tech}. ¿Nos ayudas calificándolo? ⭐⭐⭐⭐⭐ Solo toma 30 segundos: https://sistekore.sistekore.com/calificar?t=${tk}`
+          : `Hola ${name},\n\n¡Gracias por confiar en SisteKore!\n\nTu servicio${tk ? ` "${sv}" (Ticket ${tk})` : ""} fue resuelto por ${tech}. Tu opinión es muy importante para mejorar continuamente.\n\n¿Nos ayudarías calificando el servicio?\n👉 https://sistekore.sistekore.com/calificar?t=${tk}\n\nSolo toma 30 segundos. Gracias por permitirnos ser tu aliado tecnológico.\n\nSaludos,\nEquipo SisteKore`
+      };
+    case "cotizacion":
+      const titulo = ctx.deal?.title || "los servicios solicitados";
+      const valor = ctx.deal?.val ? `$${ctx.deal.val.toLocaleString("es-CO")}` : "(ver propuesta adjunta)";
+      return {
+        subject: `Cotización SisteKore — ${titulo}`,
+        body: isWA
+          ? `Hola ${name} 👋 Te comparto la cotización para "${titulo}" por valor de ${valor}. Quedo atento a tus comentarios para avanzar. ¡Gracias por la oportunidad!`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nTal como conversamos, le envío la cotización formal para "${titulo}".\n\nValor total: ${valor}\n• Tiempo de entrega: a convenir\n• Validez de oferta: 15 días\n• Forma de pago: 50% anticipo, 50% contra entrega\n• Garantía: 90 días sobre mano de obra\n\nQuedo atento a sus comentarios y dudas para avanzar con el servicio.\n\nGracias por considerarnos.\n\nSaludos cordiales,\nÁrea Comercial\nSisteKore\n📞 315 742 0568`
+      };
+    case "recordatorio":
+      const fecha = ctx.event?.date || "la fecha acordada";
+      const hora = ctx.event?.time || "la hora acordada";
+      const evt = ctx.event?.title || "nuestra cita";
+      const technic = ctx.event?.tech || "nuestro técnico";
+      return {
+        subject: `Recordatorio: ${evt} — ${fecha}`,
+        body: isWA
+          ? `Hola ${name} 👋 Te recordamos nuestra cita "${evt}" el ${fecha} a las ${hora}. ${technic} estará atendiendo. ¡Nos vemos!`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nLe recordamos nuestra cita programada:\n\n📅 ${evt}\n📆 Fecha: ${fecha}\n🕐 Hora: ${hora}\n👤 Técnico responsable: ${technic}\n\nSi necesita reprogramar, por favor avísenos con anticipación.\n\nSaludos cordiales,\nEquipo SisteKore\n📞 315 742 0568`
+      };
+    case "reactivacion":
+      return {
+        subject: `Te extrañamos — SisteKore`,
+        body: isWA
+          ? `¡Hola ${name}! 👋 Hace un tiempo no nos vemos por aquí. ¿Cómo van tus equipos? Si necesitas mantenimiento preventivo o tienes alguna falla, estamos para ayudarte. 🛠`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nHace un tiempo no tenemos contacto y queríamos saludarle. ¿Cómo van sus equipos? ¿Hay algo en lo que podamos apoyarles?\n\nLe recordamos que ofrecemos:\n• Mantenimiento preventivo de equipos\n• Soporte remoto y presencial\n• Cámaras de seguridad y redes\n• Planes mensuales con tarifa preferencial\n\nSi le interesa retomar nuestros servicios, agendamos una visita sin costo.\n\nSaludos cordiales,\nEquipo SisteKore\n📞 315 742 0568`
+      };
+    case "agradecimiento":
+      return {
+        subject: `Gracias por confiar en SisteKore`,
+        body: isWA
+          ? `¡Hola ${name}! 🙏 Solo queríamos agradecerte por confiar en *SisteKore* Es un gusto ser tu aliado tecnológico. Cualquier cosa, aquí estamos. 🤝`
+          : `Hola ${name},\n\n¡Gracias por confiar en SisteKore!\n\nEs un placer ser su aliado tecnológico y poder apoyarles cuando lo necesitan. Su confianza nos motiva a seguir mejorando cada día.\n\nRecuerde que siempre estamos a su disposición.\n\nSaludos cordiales,\nAlexander Ospina\nDirector Operativo · SisteKore`
+      };
+    case "vip":
+      return {
+        subject: `${empresa} — Visita preventiva mensual SisteKore`,
+        body: isWA
+          ? `¡Hola ${name}! 👋 Como cliente *Plan Total Aliado TI*, queremos coordinar tu visita preventiva mensual. ¿Qué día de esta semana te queda mejor? Saludos.`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nComo cliente Plan Total Aliado TI, queremos coordinar su visita preventiva mensual incluida en su plan.\n\n¿Qué día de esta semana le queda mejor? Adaptamos nuestra agenda a la suya.\n\nServicios incluidos en esta visita:\n• Diagnóstico completo de equipos\n• Limpieza de hardware\n• Actualización de software\n• Backup verificado\n• Reporte ejecutivo del estado\n\nQuedo atento a su confirmación.\n\nSaludos cordiales,\nEquipo SisteKore\n📞 315 742 0568`
+      };
+    case "soporte":
+      return {
+        subject: `Actualización de servicio — SisteKore`,
+        body: isWA
+          ? `Hola ${name}, te informo el estado de tu servicio: ${ctx.ticket?.inc || "tu solicitud"} está en seguimiento por ${ctx.ticket?.tech || "nuestro equipo"}. Te mantenemos al tanto. 🛠`
+          : `Hola ${name},\n\nReciba un cordial saludo.\n\nLe escribo para informarle el estado de su servicio:\n\n${ctx.ticket?.id ? `Ticket: ${ctx.ticket.id}` : ""}${ctx.ticket?.inc ? `\nIncidente: ${ctx.ticket.inc}` : ""}${ctx.ticket?.tech ? `\nTécnico asignado: ${ctx.ticket.tech}` : ""}\n\nEstamos trabajando en su caso y le mantendremos al tanto de los avances.\n\nSi tiene alguna duda, no dude en contactarnos.\n\nSaludos cordiales,\nEquipo SisteKore\n📞 315 742 0568`
+      };
+    default:
+      return { subject: "", body: "" };
+  }
+}
+
+function MsgGenIA({ open, onClose, ctx, defaultType }) {
+  const [type, setType] = useState(defaultType || "saludo");
+  const [channel, setChannel] = useState("email");
+  const [msg, setMsg] = useState({ subject: "", body: "" });
+
+  // Cuando el modal se abre con un nuevo defaultType, resetear el tipo
+  useEffect(() => {
+    if (open && defaultType) {
+      setType(defaultType);
+    }
+  }, [open, defaultType]);
+
+  useEffect(() => {
+    if (open) {
+      const generated = generateMessage(type, { ...ctx, channel });
+      setMsg(generated);
+    }
+  }, [open, type, channel, ctx]);
+
+  function send() {
+    const c = ctx?.client || {};
+    if (channel === "wa") {
+      const num = String(c.wa || c.phone || "").replace(/[^0-9]/g, "");
+      if (!num) { alert("⚠️ Este cliente no tiene WhatsApp ni teléfono registrado"); return; }
+      const finalNum = (num.length === 10 && !num.startsWith("57")) ? "57" + num : num;
+      const url = `https://wa.me/${finalNum}?text=${encodeURIComponent(msg.body)}`;
+      window.open(url, "_blank");
+    } else {
+      if (!c.email) { alert("⚠️ Este cliente no tiene correo registrado"); return; }
+      const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(msg.subject)}&body=${encodeURIComponent(msg.body)}`;
+      window.open(url, "_blank");
+    }
+    onClose && onClose();
+  }
+
+  return <Mo open={open} onClose={onClose} title="🤖 Generar Mensaje con IA">
+    {open && (() => {
+      const c = ctx?.client || {};
+      const tpl = MSG_TEMPLATES.find(x => x.id === type);
+      return (
+        <div>
+          {/* Banner cliente */}
+          <div style={{ background: `${C.purple}08`, borderRadius: 7, padding: 9, marginBottom: 10, border: `1px solid ${C.purple}25` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.navy }}>{c.name || "Cliente"}</div>
+            <div style={{ fontSize: 10, color: C.g500 }}>
+              {c.email ? `📧 ${c.email}` : <span style={{ color: C.err }}>⚠️ Sin correo</span>}
+              {" · "}
+              {c.wa ? `💬 WhatsApp ${c.wa}` : <span style={{ color: C.err }}>⚠️ Sin WhatsApp</span>}
+            </div>
+          </div>
+
+          {/* Selector de plantilla */}
+          <Fl label="Tipo de mensaje (la IA lo redacta automáticamente)">
+            <select style={is} value={type} onChange={e => setType(e.target.value)}>
+              {MSG_TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.l}</option>)}
+            </select>
+          </Fl>
+
+          {/* Selector de canal */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <button onClick={() => setChannel("email")} style={{ flex: 1, padding: "8px 12px", borderRadius: 7, border: `1px solid ${channel === "email" ? C.purple : C.g200}`, background: channel === "email" ? `${C.purple}10` : C.w, color: channel === "email" ? C.purple : C.g500, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, fontFamily: "inherit" }}><Mail size={12} /> Email (Gmail)</button>
+            <button onClick={() => setChannel("wa")} style={{ flex: 1, padding: "8px 12px", borderRadius: 7, border: `1px solid ${channel === "wa" ? "#25D366" : C.g200}`, background: channel === "wa" ? "#25D36610" : C.w, color: channel === "wa" ? "#25D366" : C.g500, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, fontFamily: "inherit" }}><WAIcon size={13} color={channel === "wa" ? "#25D366" : C.g500} /> WhatsApp</button>
+          </div>
+
+          {/* Tono detectado */}
+          <div style={{ fontSize: 9.5, color: C.g500, marginBottom: 9, fontStyle: "italic" }}>
+            🤖 Tono detectado: <strong style={{ color: C.purple }}>{tpl?.tone}</strong> · Generado con datos del cliente
+          </div>
+
+          {/* Vista previa editable */}
+          {channel === "email" && (
+            <Fl label="Asunto (editable)">
+              <input style={is} value={msg.subject} onChange={e => setMsg(p => ({ ...p, subject: e.target.value }))} />
+            </Fl>
+          )}
+          <Fl label={`Mensaje (editable) — ${msg.body.length} caracteres`}>
+            <textarea style={{ ...is, minHeight: 200, fontFamily: "inherit", lineHeight: 1.5 }} value={msg.body} onChange={e => setMsg(p => ({ ...p, body: e.target.value }))} />
+          </Fl>
+
+          {/* Botones */}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => { const g = generateMessage(type, { ...ctx, channel }); setMsg(g); }} style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${C.g300}`, background: C.w, color: C.g600, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}>
+              <Activity size={12} /> Regenerar
+            </button>
+            <Bt onClick={send} v={channel === "wa" ? "ok" : "purple"} icon={Send}>{channel === "wa" ? "Enviar por WhatsApp" : "Enviar por Gmail"}</Bt>
+          </div>
+        </div>
+      );
+    })()}
+  </Mo>;
+}
+
+function NP({ notifs, onRead, onClick: navTo, onClose, onMarkOneRead }) {
+  function handleNotifClick(n) {
+    // Marcar SOLO esta notificación como leída
+    if (onMarkOneRead) onMarkOneRead(n.id);
+    if (!navTo) return;
+    // 1) Si tiene un targetTicketId, ir a ese ticket
+    if (n.ticketId) { navTo("tickets", "activos", n.ticketId); onClose && onClose(); return; }
+    // 2) Si tiene un page directo
+    if (n.page) { navTo(n.page); onClose && onClose(); return; }
+    // 3) Intentar extraer TK-XXXX o TS-XX del texto
+    const m = (n.text || "").match(/(T[KS]-?\d+)/i);
+    if (m) { navTo("tickets", "activos", m[1].toUpperCase()); onClose && onClose(); return; }
+    // 4) Detectar palabras clave para mapeo de página
+    const t = (n.text || "").toLowerCase();
+    if (t.includes("ticket") || t.includes("sla")) { navTo("tickets", "activos"); onClose && onClose(); return; }
+    if (t.includes("cliente") || t.includes("crm")) { navTo("clients"); onClose && onClose(); return; }
+    if (t.includes("inventari") || t.includes("stock")) { navTo("inventory"); onClose && onClose(); return; }
+    if (t.includes("calendario") || t.includes("agend") || t.includes("evento")) { navTo("calendar"); onClose && onClose(); return; }
+    // Si no tiene a dónde navegar, solo se cierra el panel
+    onClose && onClose();
+  }
+  return <div data-notif-panel style={{ position: "absolute", top: "100%", right: 0, marginTop: 6, width: 360, maxWidth: "calc(100vw - 24px)", background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, boxShadow: "0 10px 28px rgba(0,0,0,.12)", zIndex: 200, overflow: "hidden" }}>
+    <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>Notificaciones</span>
+      <button onClick={onRead} style={{ background: "none", border: "none", color: C.blue, fontSize: 10, cursor: "pointer", fontWeight: 600 }}>Marcar leídas</button>
+    </div>
+    <div style={{ maxHeight: 360, overflow: "auto" }}>
+      {notifs.length === 0 && <div style={{ padding: 18, textAlign: "center", color: C.g400, fontSize: 11 }}>Sin notificaciones</div>}
+      {notifs.slice(0, 20).map(n => {
+        const isUrgent = n.type === "urgent" || n.type === "sla";
+        const isMention = n.fromUser; // notificación entre usuarios
+        return (
+          <div key={n.id} onClick={() => handleNotifClick(n)} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.g100}`, background: n.read ? "transparent" : `${isMention ? C.purple : isUrgent ? C.err : C.blue}06`, fontSize: 11, color: C.navy, cursor: "pointer", transition: "background .15s", borderLeft: `3px solid ${n.read ? "transparent" : (isMention ? C.purple : isUrgent ? C.err : C.blue)}` }} onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = n.read ? "transparent" : `${isMention ? C.purple : isUrgent ? C.err : C.blue}06`} title="Clic para abrir el módulo relacionado">
+            {isMention && (
+              <div style={{ fontSize: 9, fontWeight: 700, color: C.purple, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                💬 De {n.fromUser} → {n.toUser || "Tú"}
+              </div>
+            )}
+            <div style={{ lineHeight: 1.4 }}>{n.text}</div>
+            <div style={{ fontSize: 9, color: C.g400, marginTop: 3, display: "flex", justifyContent: "space-between" }}>
+              <span>{ta(n.time)}</span>
+              <span style={{ color: C.blue, fontWeight: 600 }}>Abrir →</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>;
+}
+
+/* === SIDEBAR === */
+const NAV = [
+  { id: "dashboard", l: "Dashboard", i: LayoutDashboard },
+  { id: "tickets", l: "Tickets", i: Ticket },
+  { id: "clients", l: "Clientes", i: Users },
+  { id: "inventory", l: "Inventario", i: Package },
+  { id: "calendar", l: "Calendario", i: Calendar },
+  { id: "knowledge", l: "Centro de Conocimiento", i: BookOpen },
+  { id: "users", l: "Usuarios", i: Settings }
+];
+
+function Side({ active, go, col, toggle, user, all, onSw, onClose, isMobile }) {
+  const [um, setUm] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const r = ROLES[user.role];
+  const pg = gp(user.role);
+  const closeMenu = (e) => { if (e) { e.stopPropagation(); e.preventDefault(); } if (onClose) onClose(); };
+  // En móvil: position relative (el wrapper externo lo posiciona). En desktop: position fixed.
+  return <div style={{ width: isMobile ? "100%" : (col ? 58 : 240), height: "100%", minHeight: "100vh", background: C.sidebar, display: "flex", flexDirection: "column", transition: "width .25s", position: isMobile ? "relative" : "fixed", left: 0, top: 0, bottom: 0, zIndex: 100, boxShadow: "2px 0 24px rgba(7, 27, 59, 0.25)", overflowY: "auto", borderRight: `1px solid rgba(255,255,255,0.04)` }}>
+    {/* UNIVERSO ANIMADO — estrellas con drift + cometas + fugaces */}
+    {!col && (
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
+        {/* CAPA 1: 120 estrellitas con drift vertical lento (parallax lejano) */}
+        {Array.from({ length: 120 }).map((_, i) => {
+          const left = ((i * 53 + 17) % 100);
+          const top = ((i * 37 + 11) % 100);
+          const size = (i % 2) + 1;
+          const delay = (i * 0.18) % 6;
+          const duration = 2.5 + ((i % 5) * 0.5);
+          // Mitad sube, mitad baja — efecto universo flotante
+          const driftDir = i % 2 === 0 ? "down" : "up";
+          const driftDur = 90 + ((i % 8) * 15); // 90-195s muy lento
+          const driftDelay = (i * 0.7) % driftDur;
+          const colors = ["#FFFFFF", "#A855F7", "#3B82F6", "#7C3AED", "#FFFFFF", "#C4B5FD"];
+          const color = colors[i % 6];
+          return <div key={`s-${i}`} style={{
+            position: "absolute", left: `${left}%`, top: `${top}%`,
+            width: size, height: size, borderRadius: "50%", background: color,
+            animation: `star-twinkle ${duration}s ease-in-out infinite ${delay}s, star-drift-${driftDir} ${driftDur}s linear infinite ${driftDelay}s`,
+            boxShadow: `0 0 ${size * 2.5}px ${color}`
+          }} />;
+        })}
+        {/* CAPA 2: 30 medianas con drift más rápido (parallax medio) */}
+        {Array.from({ length: 30 }).map((_, i) => {
+          const left = ((i * 71 + 29) % 95) + 2;
+          const top = ((i * 43 + 19) % 95) + 2;
+          const size = 2 + (i % 2);
+          const delay = (i * 0.4) % 4;
+          const duration = 3 + ((i % 4) * 0.6);
+          const driftDir = i % 2 === 0 ? "up" : "down";
+          const driftDur = 60 + ((i % 6) * 10); // 60-110s
+          const driftDelay = (i * 1.3) % driftDur;
+          const colors = ["#A855F7", "#7C3AED", "#3B82F6", "#FFFFFF"];
+          const color = colors[i % 4];
+          return <div key={`m-${i}`} style={{
+            position: "absolute", left: `${left}%`, top: `${top}%`,
+            width: size, height: size, borderRadius: "50%", background: color,
+            animation: `star-twinkle ${duration}s ease-in-out infinite ${delay}s, star-drift-${driftDir} ${driftDur}s linear infinite ${driftDelay}s`,
+            boxShadow: `0 0 ${size * 4}px ${color}, 0 0 ${size * 2}px ${color}`
+          }} />;
+        })}
+        {/* CAPA 3: 10 grandes hero (drift más rápido = parallax cercano) */}
+        {Array.from({ length: 10 }).map((_, i) => {
+          const left = ((i * 91 + 7) % 90) + 5;
+          const top = ((i * 67 + 13) % 90) + 5;
+          const size = 3;
+          const delay = (i * 0.6) % 5;
+          const driftDir = i % 2 === 0 ? "down" : "up";
+          const driftDur = 40 + ((i % 4) * 8); // 40-72s
+          const driftDelay = (i * 2) % driftDur;
+          const colors = ["#A855F7", "#FFFFFF", "#7C3AED"];
+          const color = colors[i % 3];
+          return <div key={`l-${i}`} style={{
+            position: "absolute", left: `${left}%`, top: `${top}%`,
+            width: size, height: size, borderRadius: "50%", background: color,
+            animation: `star-twinkle 4s ease-in-out infinite ${delay}s, star-drift-${driftDir} ${driftDur}s linear infinite ${driftDelay}s`,
+            boxShadow: `0 0 ${size * 6}px ${color}, 0 0 ${size * 3}px ${color}, 0 0 ${size * 1.5}px #FFFFFF`
+          }} />;
+        })}
+
+        {/* 2 COMETAS — sidebar (más estrecho) */}
+        {[
+          { duration: 22, delay: 3,  top: "15%", color: "#A855F7", head: "#FFFFFF", w: 60 },
+          { duration: 28, delay: 14, top: "60%", color: "#60A5FA", head: "#FFFFFF", w: 65 }
+        ].map((c, i) => (
+          <div key={`side-comet-${i}`} style={{
+            position: "absolute",
+            top: c.top,
+            left: 0,
+            width: c.w,
+            height: 2,
+            background: `linear-gradient(90deg, transparent 0%, ${c.color}40 30%, ${c.color} 75%, ${c.head} 100%)`,
+            borderRadius: 4,
+            boxShadow: `0 0 8px ${c.color}, 0 0 16px ${c.color}60`,
+            animation: `comet-pass ${c.duration}s linear infinite ${c.delay}s`,
+            opacity: 0,
+            willChange: "transform, opacity"
+          }}>
+            <div style={{
+              position: "absolute", right: -3, top: -2.5, width: 7, height: 7,
+              borderRadius: "50%", background: c.head,
+              boxShadow: `0 0 12px ${c.head}, 0 0 24px ${c.color}, 0 0 36px ${c.color}80`
+            }} />
+          </div>
+        ))}
+
+        {/* Onda decorativa superior */}
+        <svg style={{ position: "absolute", top: "20%", left: "-50%", width: "200%", height: 200, opacity: 0.18, pointerEvents: "none" }} viewBox="0 0 800 200" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sidebarWave" x1="0" x2="1">
+              <stop offset="0" stopColor="#7C3AED" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#A855F7" stopOpacity="0.7" />
+              <stop offset="1" stopColor="#3B82F6" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="sidebarWave2" x1="0" x2="1">
+              <stop offset="0" stopColor="#3B82F6" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#60A5FA" stopOpacity="0.6" />
+              <stop offset="1" stopColor="#A855F7" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d="M 0 100 Q 200 40 400 100 T 800 100" stroke="url(#sidebarWave)" strokeWidth="1.5" fill="none" />
+          <path d="M 0 130 Q 200 70 400 130 T 800 130" stroke="url(#sidebarWave2)" strokeWidth="1" fill="none" />
+        </svg>
+        {/* Onda decorativa inferior */}
+        <svg style={{ position: "absolute", bottom: "20%", left: "-50%", width: "200%", height: 200, opacity: 0.15, pointerEvents: "none" }} viewBox="0 0 800 200" preserveAspectRatio="none">
+          <path d="M 0 100 Q 200 160 400 100 T 800 100" stroke="url(#sidebarWave)" strokeWidth="1.5" fill="none" />
+        </svg>
+      </div>
+    )}
+    {/* Las estrellitas son absolute con pointer-events:none, el contenido siguiente las cubre naturalmente */}
+    <div style={{ padding: col ? "14px 6px" : "16px 12px", borderBottom: `1px solid rgba(255,255,255,0.06)`, display: "flex", justifyContent: col ? "center" : "flex-start", alignItems: "center", cursor: "pointer", position: "relative", zIndex: 1, overflow: "hidden" }} onClick={toggle}>
+      {col ? <LogoMini /> : <Logo />}
+    </div>
+    <nav style={{ flex: 1, padding: "7px 4px", display: "flex", flexDirection: "column", gap: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
+      {NAV.filter(n => pg.includes(n.id)).map(item => {
+        const a = active === item.id;
+        return <button key={item.id} onClick={() => go(item.id)} style={{
+          display: "flex", alignItems: "center", gap: 9,
+          padding: col ? "9px" : "9px 11px",
+          borderRadius: 8, border: "none", cursor: "pointer", width: "100%", textAlign: "left",
+          background: a ? C.blue : "transparent",
+          color: C.w,
+          fontSize: 13, fontWeight: a ? 700 : 600,
+          justifyContent: col ? "center" : "flex-start",
+          fontFamily: "inherit",
+          // Glow vertical solo (sin bleed lateral) + tinte interior blanco
+          boxShadow: a ? `0 4px 12px -2px ${C.glowBlue}, inset 0 1px 0 rgba(255,255,255,0.12)` : "none",
+          transition: "all .15s ease"
+        }}
+          onMouseEnter={e => { if (!a) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; } }}
+          onMouseLeave={e => { if (!a) { e.currentTarget.style.background = "transparent"; } }}>
+          <item.i size={17} color={C.w} strokeWidth={a ? 2.4 : 2} />{!col && item.l}
+        </button>;
+      })}
+    </nav>
+    {/* FOOTER del sidebar — SisteKore v1.0 cliqueable */}
+    {!col && (
+      <button onClick={() => setAboutOpen(true)} title="Acerca de SisteKore" style={{
+        margin: "0 10px 12px",
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(124,58,237,0.08)",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        display: "flex", alignItems: "center", gap: 10,
+        transition: "all .15s"
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(124,58,237,0.18)"; e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(124,58,237,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, #7C3AED, #2563FF)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 10px rgba(124,58,237,0.4)" }}>
+          <Activity size={16} color={C.w} strokeWidth={2.2} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.w, lineHeight: 1.2 }}>SisteKore <span style={{ color: "#A855F7", fontWeight: 600 }}>v1.0</span></div>
+          <div style={{ fontSize: 9.5, color: "#94A3B8", marginTop: 2 }}>Plataforma SaaS · IA</div>
+        </div>
+      </button>
+    )}
+
+    {/* MODAL: Acerca de SisteKore */}
+    <Mo open={aboutOpen} onClose={() => setAboutOpen(false)} title="✦ Acerca de SisteKore">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 14, padding: 18, marginBottom: 18, border: `1px solid rgba(124,58,237,0.18)`, display: "flex", gap: 14, alignItems: "center" }}>
+          <EddyIcon size={64} withShadow />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.navy, letterSpacing: -0.3 }}>SisteKore <span style={{ color: C.purple, fontSize: 13, fontWeight: 600 }}>v1.0</span></div>
+            <div style={{ fontSize: 12, color: C.g600, marginTop: 4 }}>Plataforma SaaS · gestión de tickets y operación técnica con IA 🇨🇴</div>
+          </div>
+        </div>
+
+        {/* Stats de uso */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
+          {[
+            { label: "Módulos", val: 12, color: "#3B82F6" },
+            { label: "IA integrada", val: "✦", color: "#7C3AED" },
+            { label: "Hecho en", val: "MED", color: "#EF4444" }
+          ].map((s, i) => (
+            <div key={i} style={{ background: `${s.color}10`, border: `1px solid ${s.color}25`, borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
+              <div style={{ fontSize: 9.5, color: C.g500, fontWeight: 600, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Novedades v1.0 */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>✨ Novedades v1.0</div>
+          {[
+            "Rediseño completo SaaS premium en los 12 módulos",
+            "Asistente Eddy Suport con matching inteligente",
+            "Drag-and-drop en Calendario operativo y comercial",
+            "Mi Perfil con métricas personales por rol",
+            "Insights IA cliqueables en cada módulo"
+          ].map((n, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, padding: "5px 0", fontSize: 11.5, color: C.g600 }}>
+              <span style={{ color: C.purple, flexShrink: 0 }}>●</span>
+              <span style={{ flex: 1, lineHeight: 1.45 }}>{n}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Próximamente */}
+        <div style={{ background: "#FEF3C7", borderRadius: 10, padding: 12, border: `1px solid #F59E0B40`, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 5 }}>🚧 Próximamente</div>
+          <div style={{ fontSize: 10.5, color: "#92400E", lineHeight: 1.5 }}>
+            Conexión con Supabase (persistencia real) · Auth + multi-empresa · WhatsApp Business API · Pasarela de pago Wompi · App móvil PWA
+          </div>
+        </div>
+
+        {/* Empresa */}
+        <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Hecho por</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 36 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>SisteKore</div>
+              <div style={{ fontSize: 10.5, color: C.g500 }}>Medellín, Colombia</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+            <a href="mailto:sistekore@gmail.com" style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 8, background: `${C.blue}10`, color: C.blue, fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
+              <Mail size={12} /> Soporte
+            </a>
+            <a href="https://wa.me/573157420568?text=Hola,%20vengo%20de%20SisteKore" target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 10px", borderRadius: 8, background: "#D1FAE5", color: "#10B981", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
+              <Phone size={12} /> WhatsApp
+            </a>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setAboutOpen(false)} style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>Listo</button>
+        </div>
+      </div>
+    </Mo>
+  </div>;
+}
+
+/* === PAGE: DASHBOARD === */
+function PgDash({ data: d, go, cu }) {
+  const act  = d.tickets.filter(t => t.st !== "SOLUCIONADO");
+  const urg  = act.filter(t => t.pri === "URGENTE").length;
+  const slaX = act.filter(t => slaS(t).s === "exp").length;
+  const low  = d.inv.filter(i => i.st === "BAJO" || i.st === "AGOTADO").length;
+  const now  = Date.now();
+
+  // Métricas derivadas
+  const todayISO   = new Date().toISOString().slice(0, 10);
+  const evHoy      = (d.events || []).filter(e => e.date === todayISO).length;
+  const sin24h     = act.filter(t => (now - new Date(t.at).getTime()) / 36e5 > 24).length;
+  const rt         = d.solved.filter(t => t.sat > 0);
+  const avgSat     = rt.length ? (rt.reduce((s, t) => s + t.sat, 0) / rt.length).toFixed(1) : null;
+
+  // Mejor técnico por tickets resueltos
+  const techMap = {};
+  d.solved.forEach(t => { if (t.tech) techMap[t.tech] = (techMap[t.tech] || 0) + 1; });
+  const bestTechEntry = Object.entries(techMap).sort((a, b) => b[1] - a[1])[0];
+  const bestTech      = bestTechEntry ? bestTechEntry[0].split(" ")[0] : null;
+  const bestTechCount = bestTechEntry ? bestTechEntry[1] : 0;
+
+  // Categoría con más tickets esta semana
+  const weekAgo = now - 7 * 864e5;
+  const weekTk  = act.filter(t => new Date(t.at).getTime() > weekAgo);
+  const catMap  = {};
+  weekTk.forEach(t => { const c = t.cat || "Otro"; catMap[c] = (catMap[c] || 0) + 1; });
+  const topCatEntry = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
+  const topCat      = topCatEntry ? topCatEntry[0] : null;
+  const topCatCount = topCatEntry ? topCatEntry[1] : 0;
+
+  const nombrePila = (cu?.name || "Usuario").split(" ")[0];
+  const fechaHoy   = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const hora       = new Date().getHours();
+  const saludo     = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+
+  // Estado general de la operación
+  const estadoOp = slaX > 0 || urg > 0 ? "crítico" : sin24h > 0 || low > 0 ? "atención" : "normal";
+  const estadoConf = {
+    crítico:  { label: "CRÍTICO",  dot: C.err,  bg: "#FEE2E2", text: "#991B1B", msg: `${slaX} SLA vencido${slaX !== 1 ? "s" : ""} · ${urg} urgente${urg !== 1 ? "s" : ""}` },
+    atención: { label: "ATENCIÓN", dot: C.warn, bg: "#FEF3C7", text: "#92400E", msg: `${sin24h} ticket${sin24h !== 1 ? "s" : ""} sin resolver +24 h · stock bajo` },
+    normal:   { label: "NORMAL",   dot: C.ok,   bg: "#DCFCE7", text: "#166534", msg: "Operación dentro de parámetros" }
+  };
+  const eC = estadoConf[estadoOp];
+
+  return <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+    {/* ── HEADER EJECUTIVO ── */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.g400, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>{saludo}, {nombrePila}</div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: C.navy, margin: 0, letterSpacing: -0.5 }}>Centro de Comando</h1>
+        <div style={{ fontSize: 12, color: C.g500, marginTop: 3, textTransform: "capitalize" }}>{fechaHoy}</div>
+      </div>
+      {/* Badge estado general — clickeable, sugiere acción concreta */}
+      <button onClick={() => go("tickets", slaX > 0 ? "vencidos" : urg > 0 ? "criticos" : "activos")} title={slaX > 0 ? "Ir a tickets con SLA vencido" : urg > 0 ? "Ir a tickets críticos" : "Ver tickets activos"} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 10, background: eC.bg, border: `1px solid ${eC.dot}40`, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = eC.dot; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 4px 12px ${eC.dot}30`; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = `${eC.dot}40`; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: eC.dot, boxShadow: `0 0 0 3px ${eC.dot}30`, flexShrink: 0 }} />
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: eC.text, letterSpacing: 1 }}>OPERACIÓN {eC.label}</div>
+          <div style={{ fontSize: 10.5, color: eC.text, opacity: 0.8, marginTop: 1 }}>{eC.msg}</div>
+          {(slaX > 0 || urg > 0) && (
+            <div style={{ fontSize: 10, fontWeight: 700, color: eC.dot, marginTop: 4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {slaX > 0 ? "Revisar SLA ahora" : "Reasignar tickets"} →
+            </div>
+          )}
+        </div>
+      </button>
+    </div>
+
+    {/* ── KPIs COMPACTOS ── */}
+    <div data-kpi-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
+      {[
+        { icon: Ticket,        val: act.length,       label: "Tickets activos",  accent: C.blue,   bg: "#EFF6FF", note: urg > 0 ? `${urg} urgentes` : "Al día",     noteOk: urg === 0, onClick: () => go("tickets","activos") },
+        { icon: AlertTriangle, val: slaX,              label: "SLA vencidos",     accent: C.err,    bg: "#FEF2F2", note: slaX > 0 ? "Requiere acción" : "Sin vencidos", noteOk: slaX === 0, onClick: () => go("tickets","vencidos") },
+        { icon: CheckCircle,   val: d.solved.length,  label: "Resueltos total",  accent: C.ok,     bg: "#F0FDF4", note: avgSat ? `★ ${avgSat}/5 satisfacción` : "Sin calificaciones", noteOk: true, onClick: () => go("tickets","resueltos") },
+        { icon: Users,         val: d.clients.length, label: "Clientes",         accent: "#3B82F6", bg: "#EFF6FF", note: "Base activa",     noteOk: true, onClick: () => go("clients") },
+        { icon: Package,       val: low,              label: "Stock bajo",       accent: low > 0 ? C.warn : C.ok, bg: low > 0 ? "#FFFBEB" : "#F0FDF4", note: low > 0 ? "Reabastecer" : "Inventario OK", noteOk: low === 0, onClick: () => go("inventory") },
+        { icon: Calendar,      val: evHoy,            label: "Eventos hoy",      accent: C.purple, bg: "#FAF5FF", note: "Agenda operativa", noteOk: true, onClick: () => go("calendar") },
+      ].map(({ icon: I, val, label, accent, bg, note, noteOk, onClick }, i) => (
+        <div key={i} data-kpi onClick={onClick} style={{ background: C.w, borderRadius: 14, padding: "16px 16px 14px", border: `1px solid ${accent}20`, cursor: "pointer", transition: "all .2s", boxShadow: C.shadowCard, display: "flex", flexDirection: "column", gap: 6, position: "relative", overflow: "hidden" }}
+          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 8px 24px ${accent}22`; e.currentTarget.style.borderColor = `${accent}50`; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = `${accent}20`; }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: "14px 14px 0 0" }} />
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <I size={16} color={accent} strokeWidth={1.85} />
+          </div>
+          <div data-kpi-val style={{ fontSize: 28, fontWeight: 800, color: C.navy, lineHeight: 1, letterSpacing: -1 }}>{val}</div>
+          <div data-kpi-label style={{ fontSize: 11.5, color: C.g500, fontWeight: 600 }}>{label}</div>
+          <div style={{ fontSize: 10.5, color: noteOk ? C.ok : C.warn, fontWeight: 600 }}>{note}</div>
+        </div>
+      ))}
+    </div>
+
+    {/* ── FILA PRINCIPAL: Insights IA + Tickets activos ── */}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(380px,1fr))", gap: 18 }}>
+
+      {/* INSIGHTS IA EJECUTIVOS */}
+      <div style={{ background: C.w, borderRadius: 18, border: `1px solid rgba(226,232,240,0.7)`, overflow: "hidden", boxShadow: C.shadowCard }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Activity size={14} color={C.w} strokeWidth={2} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>Insights IA</span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.purple, background: "#EDE9FE", padding: "3px 10px", borderRadius: 20, letterSpacing: 0.5 }}>EN VIVO</span>
+        </div>
+        <div style={{ padding: "6px 0" }}>
+          {/* Insight 1: Tickets sin resolver +24h — Dato + Interpretación + Recomendación */}
+          {(() => {
+            const level = sin24h > 2 ? "err" : sin24h > 0 ? "warn" : "ok";
+            const conf  = { err: { c: C.err, bg: "#FEF2F2", icon: AlertTriangle }, warn: { c: C.warn, bg: "#FFFBEB", icon: Clock }, ok: { c: C.ok, bg: "#F0FDF4", icon: CheckCircle } }[level];
+            const interp = sin24h > 0 ? "Riesgo SLA alto." : "Tiempo de respuesta dentro del límite.";
+            const reco = sin24h > 0 ? `Recomendación: revisar asignación y prioridad${sin24h > 2 ? ", reasignar 2 tickets o escalar prioridad" : ""}.` : "Sin acciones requeridas.";
+            return (
+              <div onClick={() => go("tickets","activos")} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "13px 20px", borderBottom: `1px solid ${C.g100}`, cursor: "pointer", transition: "background .15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = ""}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: conf.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <conf.icon size={16} color={conf.c} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{sin24h} ticket{sin24h !== 1 ? "s" : ""} superan{sin24h === 1 ? "" : ""} 24 h sin cierre</div>
+                  <div style={{ fontSize: 11, color: C.g500, marginTop: 2, lineHeight: 1.5 }}>
+                    <strong style={{ color: conf.c }}>{interp}</strong> {reco}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: conf.c, fontWeight: 700, whiteSpace: "nowrap", paddingTop: 4 }}>Reasignar →</div>
+              </div>
+            );
+          })()}
+          {/* Insight 2: Categoría más activa — Dato + Interpretación + Recomendación */}
+          {topCat && (
+            <div onClick={() => go("tickets","activos")} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "13px 20px", borderBottom: `1px solid ${C.g100}`, cursor: "pointer", transition: "background .15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = ""}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <BarChart3 size={16} color={C.blue} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>Categoría "{topCat}" concentra {topCatCount} ticket{topCatCount !== 1 ? "s" : ""} esta semana</div>
+                <div style={{ fontSize: 11, color: C.g500, marginTop: 2, lineHeight: 1.5 }}>
+                  <strong style={{ color: C.blue }}>{topCat === "Otro" ? "Posible mala clasificación." : "Categoría dominante."}</strong> Recomendación: {topCat === "Otro" ? "crear nueva categoría o ajustar formulario." : "evaluar mantenimiento preventivo o capacitación del equipo."}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: C.blue, fontWeight: 700, whiteSpace: "nowrap", paddingTop: 4 }}>Ajustar →</div>
+            </div>
+          )}
+          {/* Insight 3: Mejor técnico — Dato + Interpretación + Recomendación */}
+          {bestTech && (
+            <div onClick={() => go("users")} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "13px 20px", borderBottom: `1px solid ${C.g100}`, cursor: "pointer", transition: "background .15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = ""}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Star size={16} color={C.ok} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{bestTech} lidera cierres esta semana con {bestTechCount} ticket{bestTechCount !== 1 ? "s" : ""}</div>
+                <div style={{ fontSize: 11, color: C.g500, marginTop: 2, lineHeight: 1.5 }}>
+                  <strong style={{ color: C.ok }}>Buen rendimiento operativo.</strong> Recomendación: revisar buenas prácticas aplicadas y replicarlas al resto del equipo.
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: C.ok, fontWeight: 700, whiteSpace: "nowrap", paddingTop: 4 }}>Ver →</div>
+            </div>
+          )}
+          {/* Insight 4: Inventario crítico — Dato + Interpretación + Recomendación */}
+          {low > 0 && (
+            <div onClick={() => go("inventory")} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "13px 20px", cursor: "pointer", transition: "background .15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = ""}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#FFFBEB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Package size={16} color={C.warn} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{low} ítem{low !== 1 ? "s" : ""} con inventario crítico</div>
+                <div style={{ fontSize: 11, color: C.g500, marginTop: 2, lineHeight: 1.5 }}>
+                  <strong style={{ color: C.warn }}>Riesgo para próximas visitas técnicas.</strong> Recomendación: generar lista de reposición y comprar antes de fin de semana.
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: C.warn, fontWeight: 700, whiteSpace: "nowrap", paddingTop: 4 }}>Reponer →</div>
+            </div>
+          )}
+          {!topCat && !bestTech && low === 0 && sin24h === 0 && (
+            <div style={{ padding: "20px 20px", textAlign: "center", color: C.g400, fontSize: 12 }}>
+              <CheckCircle size={20} color={C.ok} style={{ display: "block", margin: "0 auto 8px" }} />
+              Operación sin alertas — todo en orden
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* TICKETS ACTIVOS */}
+      <div style={{ background: C.w, borderRadius: 18, border: `1px solid rgba(226,232,240,0.7)`, overflow: "hidden", boxShadow: C.shadowCard }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Ticket size={14} color={C.blue} strokeWidth={2} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>Tickets Activos</span>
+          </div>
+          <button onClick={() => go("tickets","activos")} style={{ background: "none", border: `1px solid ${C.g200}`, color: C.g600, fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit" }}>Ver todos</button>
+        </div>
+        {act.slice(0, 5).map(t => {
+          const cl = d.clients.find(c => c.id === t.cid);
+          const sl = slaS(t);
+          const incLow = (t.inc || "").toLowerCase();
+          let TipIcon = Wifi;
+          if (incLow.includes("imprim") || incLow.includes("toner"))  TipIcon = Printer;
+          else if (incLow.includes("pc") || incLow.includes("equip") || incLow.includes("pantalla")) TipIcon = Monitor;
+          else if (incLow.includes("ransom") || incLow.includes("virus") || incLow.includes("seguri")) TipIcon = Shield;
+          else if (incLow.includes("camar") || incLow.includes("dvr")) TipIcon = Camera;
+          const priColor = t.pri === "URGENTE" ? C.err : t.pri === "MEDIA" ? C.warn : C.blue;
+          const priBg    = t.pri === "URGENTE" ? "#FEE2E2" : t.pri === "MEDIA" ? "#FEF3C7" : "#DBEAFE";
+          const slaColor = sl.s === "exp" ? C.err : sl.s === "warn" ? C.warn : C.ok;
+          return (
+            <div key={t.id} onClick={() => go("tickets","activos",t.id)} style={{ padding: "12px 20px", borderBottom: `1px solid ${C.g100}`, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "background .15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = C.g50} onMouseLeave={e => e.currentTarget.style.background = ""}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <TipIcon size={16} color="#64748B" strokeWidth={1.75} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy, marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.inc}</div>
+                <div style={{ fontSize: 11, color: C.g500 }}>{cl?.name || "—"} · {ta(t.at)}</div>
+              </div>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: priColor, background: priBg, padding: "3px 9px", borderRadius: 12, letterSpacing: 0.3, flexShrink: 0 }}>{t.pri}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: slaColor, fontFamily: "monospace", minWidth: 46, textAlign: "right", flexShrink: 0 }}>{sl.s === "exp" ? "VENCIDO" : sl.l}</span>
+            </div>
+          );
+        })}
+        {!act.length && (
+          <div style={{ padding: 28, textAlign: "center" }}>
+            <CheckCircle size={22} color={C.ok} style={{ display: "block", margin: "0 auto 8px" }} />
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>Sin tickets activos</div>
+            <div style={{ fontSize: 11, color: C.g500, marginTop: 2 }}>El equipo está al día</div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* ── AUDITORÍA ── */}
+    <div style={{ background: C.w, borderRadius: 18, border: `1px solid rgba(226,232,240,0.7)`, overflow: "hidden", boxShadow: C.shadowCard }}>
+      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <History size={15} color={C.g500} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>Actividad Reciente</span>
+        </div>
+        <button onClick={() => go("users")} style={{ background: "none", border: `1px solid ${C.g200}`, color: C.g600, fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit" }}>Ver todo</button>
+      </div>
+      <div style={{ position: "relative", padding: "4px 0" }}>
+        {d.audit.length > 1 && <div style={{ position: "absolute", left: 63, top: 26, bottom: 26, width: 0, borderLeft: "2px dotted #CBD5E1", zIndex: 0 }} />}
+        {d.audit.slice(0, 6).map((a, i) => {
+          const moduleToPage = { "Tickets": "tickets", "Clientes": "clients", "Inventario": "inventory", "Calendario": "calendar", "Usuarios": "users", "Base Conocimiento": "knowledge", "Manual SOS": "knowledge", "Centro de Conocimiento": "knowledge" };
+          const targetPage = moduleToPage[a.module];
+          let tkId = null;
+          if (a.module === "Tickets") { const m = a.action.match(/(T[KS]-?\d+)/i); const c = m ? m[1].toUpperCase() : null; if (c && (d.tickets.some(x => x.id === c) || d.solved.some(x => x.id === c))) tkId = c; }
+          const handleClick = targetPage ? (() => { if (a.module === "Tickets" && tkId) go("tickets","activos",tkId); else go(targetPage); }) : undefined;
+          const tagColors = { "Tickets": { bg: "#DBEAFE", c: C.blue }, "Clientes": { bg: "#D1FAE5", c: C.ok }, "Inventario": { bg: "#FEF3C7", c: C.warn }, "Calendario": { bg: "#FCE7F3", c: "#DB2777" }, "Usuarios": { bg: "#F1F5F9", c: C.g600 } };
+          const tagSt = tagColors[a.module] || { bg: C.g100, c: C.g600 };
+          return (
+            <div key={i} onClick={handleClick} style={{ padding: "12px 20px", fontSize: 12, display: "flex", gap: 14, alignItems: "center", cursor: targetPage ? "pointer" : "default", transition: "background .15s", position: "relative", zIndex: 1 }}
+              onMouseEnter={targetPage ? (e => e.currentTarget.style.background = C.g50) : undefined}
+              onMouseLeave={targetPage ? (e => e.currentTarget.style.background = "") : undefined}>
+              <span style={{ color: C.g400, fontFamily: "monospace", fontSize: 10.5, minWidth: 24, textAlign: "right", fontWeight: 500 }}>{ta(a.ts)}</span>
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: C.w, border: `2px solid ${tagSt.c}`, flexShrink: 0, zIndex: 2 }} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, color: C.navy, fontSize: 12 }}>{a.user}</span>
+                <span style={{ color: C.g500, fontSize: 11.5 }}>{a.action}</span>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 600, color: tagSt.c, background: tagSt.bg, padding: "3px 10px", borderRadius: 12, whiteSpace: "nowrap" }}>{a.module}</span>
+            </div>
+          );
+        })}
+        {!d.audit.length && <div style={{ padding: 24, textAlign: "center", color: C.g400, fontSize: 12 }}>Sin actividad reciente</div>}
+      </div>
+    </div>
+
+    {/* FOOTER */}
+    <div style={{ padding: "14px 20px", background: C.w, borderRadius: 14, border: `1px solid rgba(226,232,240,0.7)`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, boxShadow: C.shadowCard }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: C.g600 }}>
+        <Lock size={13} color={C.g400} />
+        Tus datos son tuyos —{" "}
+        <button onClick={() => go("users")} style={{ background: "none", border: "none", color: C.blue, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 11.5 }}>descargar desde Usuarios</button>
+      </div>
+      <div style={{ fontSize: 10.5, color: C.g400 }}>
+        © 2026 <strong style={{ color: C.red }}>SisteKore</strong> · Medellín · <a href="mailto:sistekore@gmail.com" style={{ color: C.blue, textDecoration: "none" }}>sistekore@gmail.com</a>
+      </div>
+    </div>
+  </div>;
+}
+
+// PATCH: Solo se reemplaza la función PgTk completa y la constante TRACE_TYPES
+// El resto del archivo permanece igual
+
+// ============================================================
+// NUEVAS CONSTANTES — agregar después de const TECHS = [...]
+// ============================================================
+
+
+// ============================================================
+// REEMPLAZO COMPLETO DE PgTk
+// ============================================================
+
+function PgTk({ data: d, setData: sd, aa, initTab, onTabConsumed, highlightId, onHighlightConsumed, go, users, cu }) {
+  const [search, ss] = useState("");
+  const [sn, setSN] = useState(false);
+  const [nf, snf] = useState({ cid: "", inc: "", desc: "", cat: "" });
+  const [tab, setTab] = useState(initTab || "activos");
+  const [qid, setQid] = useState("");
+  const [tr, setTr] = useState(null);
+  const [tf, stf] = useState({ type: "recepcion", text: "" });
+  const [helpModal, setHelpModal] = useState(null); // ticket sobre el que se pide ayuda
+  const [helpForm, setHelpForm] = useState({ toUserId: "", message: "" });
+  const [reasignModal, setReasignModal] = useState(null); // ticket a reasignar
+  const [reasignTech, setReasignTech] = useState("");
+  const [reasignReason, setReasignReason] = useState("");
+  const [openMenu, setOpenMenu] = useState(null); // ID del ticket cuyo menú ⋮ está abierto
+
+  function askHelp() {
+    if (!helpModal || !helpForm.toUserId || !helpForm.message.trim()) return;
+    const target = (users || []).find(u => u.id === helpForm.toUserId);
+    if (!target) return;
+    const cl = d.clients.find(c => c.id === helpModal.cid);
+    const fromName = cu?.name || "Sistema";
+    sd(p => ({
+      ...p,
+      notifications: [{
+        id: "N" + Date.now(),
+        text: `${helpForm.message.trim()} (Ticket ${helpModal.id} — ${cl?.name || "—"})`,
+        time: new Date().toISOString(),
+        read: false,
+        type: "urgent",
+        fromUser: fromName,
+        fromUserId: cu?.id,
+        toUser: target.name,
+        toUserId: target.id,
+        ticketId: helpModal.id
+      }, ...p.notifications]
+    }));
+    aa(`Pidió ayuda a ${target.name} en ${helpModal.id}`, "Tickets");
+    setHelpModal(null);
+    setHelpForm({ toUserId: "", message: "" });
+    alert(`✅ Notificación enviada a ${target.name}`);
+  }
+
+  function doReasignar() {
+    if (!reasignModal || !reasignTech) return;
+    const oldTech = reasignModal.tech || "Sin asignar";
+    const cl = d.clients.find(c => c.id === reasignModal.cid);
+    const targetUser = (users || []).find(u => u.name === reasignTech);
+    sd(p => ({
+      ...p,
+      tickets: p.tickets.map(t => t.id === reasignModal.id ? { ...t, tech: reasignTech, st: "EN PROGRESO" } : t),
+      notifications: [{
+        id: "N" + Date.now(),
+        text: `🔄 Te REASIGNARON el ticket ${reasignModal.id} de ${cl?.name || "—"} (antes asignado a ${oldTech})${reasignReason ? ". Motivo: " + reasignReason : ""}`,
+        time: new Date().toISOString(),
+        read: false,
+        type: "urgent",
+        fromUser: cu?.name || "Sistema",
+        fromUserId: cu?.id,
+        toUser: reasignTech,
+        toUserId: targetUser?.id,
+        ticketId: reasignModal.id
+      }, ...p.notifications]
+    }));
+    aa(`Reasignó ${reasignModal.id} de ${oldTech} → ${reasignTech}${reasignReason ? " (motivo: " + reasignReason + ")" : ""}`, "Tickets");
+    setReasignModal(null);
+    setReasignTech("");
+    setReasignReason("");
+    alert(`✅ Ticket ${reasignModal.id} reasignado a ${reasignTech}. Le llegó notificación.`);
+  }
+
+  useEffect(() => {
+    if (initTab) {
+      setTab(initTab);
+      if (onTabConsumed) onTabConsumed();
+    }
+  }, [initTab]);
+
+  // Tick que fuerza re-render cada 30s para que SLA donut y labels muestren tiempo real
+  // (sin esto los SLA quedan "congelados" hasta que React vuelva a renderizar por otra razón)
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000); // 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Hacer scroll al ticket resaltado y limpiar el highlight a los 3 segundos
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById("tk-row-" + highlightId);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    const clear = setTimeout(() => {
+      if (onHighlightConsumed) onHighlightConsumed();
+    }, 3000);
+    return () => { clearTimeout(timer); clearTimeout(clear); };
+  }, [highlightId]);
+
+  const act = d.tickets.filter(t => t.st !== "SOLUCIONADO");
+  const slaExpired = act.filter(t => slaS(t).s === "exp");
+  const sourceList = tab === "vencidos" ? act.filter(t => slaS(t).s === "warn" || slaS(t).s === "exp")
+                  : tab === "criticos" ? act.filter(t => t.pri === "URGENTE" || slaS(t).s === "exp")
+                  : tab === "enproceso" ? act.filter(t => t.st === "EN PROGRESO")
+                  : act;
+  const filt = sourceList
+    .filter(t => {
+      if (!search) return true;
+      const q = search.trim().toLowerCase();
+      const cl = d.clients.find(c => c.id === t.cid);
+      return (t.id || "").toLowerCase().includes(q)
+        || (t.inc || "").toLowerCase().includes(q)
+        || (t.desc || "").toLowerCase().includes(q)
+        || (cl?.name || "").toLowerCase().includes(q)
+        || (cl?.nit || "").toLowerCase().includes(q)
+        || (cl?.phone || "").toLowerCase().includes(q)
+        || (t.tech || "").toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      // 1. Por prioridad: URGENTE > MEDIA > NO URGENTE
+      const pri = ({ URGENTE: 1, MEDIA: 2, "NO URGENTE": 3 }[a.pri] || 9) - ({ URGENTE: 1, MEDIA: 2, "NO URGENTE": 3 }[b.pri] || 9);
+      if (pri !== 0) return pri;
+      // 2. Por fecha de creación DESC (más recientes primero)
+      return new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime();
+    });
+
+  // Estado visual del ticket basado en la última entrada de trazabilidad
+  function getTicketPhase(t) {
+    if (!t.trace || t.trace.length === 0) return null;
+    const last = [...t.trace].reverse().find(e => e.type !== "nota_interna");
+    return last ? TRACE_TYPES.find(x => x.id === last.type) : null;
+  }
+
+  function create() {
+    if (!nf.cid || !nf.inc) return;
+    const id = "TK-" + String(d.tickets.length + d.solved.length + 1).padStart(4, "0");
+    const pri = ap(nf.inc);
+    sd(p => ({
+      ...p,
+      tickets: [{ id, cid: nf.cid, inc: nf.inc, desc: nf.desc, pri, st: "PENDIENTE", tech: "", at: new Date().toISOString(), trace: [] }, ...p.tickets],
+      notifications: [{ id: "N" + Date.now(), text: `Nuevo ticket ${id} (${pri}) — ${nf.inc}`, time: new Date().toISOString(), read: false, type: pri === "URGENTE" ? "urgent" : "info" }, ...p.notifications]
+    }));
+    aa(`Creó ticket ${id} — ${nf.inc}`, "Tickets");
+    snf({ cid: "", inc: "", desc: "", cat: "" });
+    setSN(false);
+  }
+
+  function assign(tid, tech) {
+    sd(p => ({ ...p, tickets: p.tickets.map(t => t.id === tid ? { ...t, tech, st: "EN PROGRESO" } : t) }));
+    aa(`Asignó ${tid} a ${tech}`, "Tickets");
+  }
+
+  function addTrace() {
+    if (!tr || !tf.text.trim()) return;
+    const tt = TRACE_TYPES.find(x => x.id === tf.type);
+    const entry = { ts: new Date().toISOString(), type: tf.type, text: tf.text.trim(), tech: tr.tech || "—" };
+    const alreadyResuelto = (tr.trace || []).some(e => e.type === "resuelto");
+    const cl = d.clients.find(c => c.id === tr.cid);
+
+    sd(p => {
+      const next = { ...p };
+      if (tf.type === "entregado") {
+        // Mover a SOLVED + agendar encuesta a 8 días
+        const fullTrace = [...(tr.trace || []), entry];
+        const resueltoEntry = fullTrace.find(e => e.type === "resuelto");
+        const surveyAt = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString();
+        next.tickets = p.tickets.filter(x => x.id !== tr.id);
+        next.solved = [{
+          id: tr.id, cid: tr.cid, inc: tr.inc, pri: tr.pri,
+          tech: tr.tech || entry.tech || "—",
+          dt: new Date().toISOString().slice(0, 10),
+          sol: resueltoEntry?.text || entry.text,
+          sat: 0, cmt: "", rated: false,
+          trace: fullTrace,
+          deliveredAt: entry.ts,
+          surveyAt,
+          surveySent: false
+        }, ...p.solved];
+        next.notifications = [{
+          id: "N" + Date.now(),
+          text: `📦 Ticket ${tr.id} ENTREGADO a ${cl?.name || "cliente"}. Encuesta agendada para ${new Date(surveyAt).toLocaleDateString("es-CO")}.`,
+          time: new Date().toISOString(),
+          read: false,
+          type: "info"
+        }, ...p.notifications];
+      } else {
+        // Solo agregar entrada de trazabilidad
+        next.tickets = p.tickets.map(t => t.id === tr.id ? { ...t, trace: [...(t.trace || []), entry] } : t);
+        // Si es la PRIMERA vez que se marca "resuelto" → notificar a Comercial
+        if (tf.type === "resuelto" && !alreadyResuelto) {
+          next.notifications = [{
+            id: "N" + Date.now(),
+            text: `🎉 [COMERCIAL] Ticket ${tr.id} de ${cl?.name || "cliente"} marcado como RESUELTO por ${tr.tech || "técnico"}. Por favor contactar al cliente y marcar "Entregado".`,
+            time: new Date().toISOString(),
+            read: false,
+            type: "urgent",
+            targetRole: "comercial"
+          }, ...p.notifications];
+        }
+      }
+      return next;
+    });
+
+    aa(`Trazabilidad ${tr.id}: ${tt?.label}`, "Tickets");
+
+    if (tf.type === "entregado") {
+      // Cerrar modal porque el ticket ya no está en activos
+      setTr(null);
+    } else {
+      setTr(p => p ? { ...p, trace: [...(p.trace || []), entry] } : p);
+    }
+    stf(prev => ({ ...prev, text: "" }));
+  }
+
+  // Línea de tiempo visual para tab consulta (solo entradas visibles al cliente)
+  function TimelinePublic({ trace }) {
+    const visible = (trace || []).filter(e => {
+      const tt = TRACE_TYPES.find(x => x.id === e.type);
+      return tt ? tt.visible : true;
+    });
+    if (!visible.length) return (
+      <div style={{ fontSize: 11, color: C.g400, fontStyle: "italic", padding: "8px 0" }}>
+        El equipo aún no ha registrado actualizaciones.
+      </div>
+    );
+    return (
+      <div style={{ position: "relative", paddingLeft: 20 }}>
+        {/* línea vertical */}
+        <div style={{ position: "absolute", left: 7, top: 8, bottom: 8, width: 2, background: C.g200 }} />
+        {visible.map((e, i) => {
+          const tt = TRACE_TYPES.find(x => x.id === e.type) || { color: C.g400, emoji: "•", label: e.type };
+          const isLast = i === visible.length - 1;
+          return (
+            <div key={i} style={{ position: "relative", paddingLeft: 20, marginBottom: isLast ? 0 : 14 }}>
+              {/* dot */}
+              <div style={{
+                position: "absolute", left: -1, top: 3, width: 14, height: 14, borderRadius: "50%",
+                background: tt.color, border: `2px solid white`,
+                boxShadow: `0 0 0 2px ${tt.color}40`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 7
+              }}>{isLast ? "●" : ""}</div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: tt.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {tt.emoji} {tt.label}
+                  </span>
+                  <span style={{ fontSize: 8.5, color: C.g400, fontFamily: "monospace" }}>
+                    {new Date(e.ts).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: C.navy, lineHeight: 1.5, background: C.g50, borderRadius: 6, padding: "5px 8px", border: `1px solid ${C.g100}` }}>
+                  {e.text}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // —— KPI compacto para fila superior de Tickets ——
+  const KpiTk = ({ icon: I, val, label, sub, subColor, iconColor, fill, fillTo, onClick, tooltip }) => {
+    const isClickable = !!onClick;
+    return (
+      <div
+        onClick={onClick}
+        title={tooltip || (isClickable ? "Clic para filtrar" : undefined)}
+        style={{
+          background: C.w,
+          borderRadius: 16,
+          padding: "16px 14px",
+          border: `1px solid rgba(226,232,240,0.7)`,
+          boxShadow: C.shadowCard,
+          display: "flex",
+          flexDirection: "column",
+          cursor: isClickable ? "pointer" : "default",
+          transition: "all .15s",
+          fontFamily: "inherit",
+          textAlign: "left"
+        }}
+        onMouseEnter={isClickable ? (e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 8px 20px -4px ${iconColor}33`; e.currentTarget.style.borderColor = `${iconColor}50`; } : undefined}
+        onMouseLeave={isClickable ? (e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = "rgba(226,232,240,0.7)"; } : undefined}>
+        <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(155deg, ${fill} 0%, ${fillTo || fill} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+          <I size={17} color={iconColor} strokeWidth={1.85} />
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: C.navy, lineHeight: 1.05, letterSpacing: -0.5 }}>{val}</div>
+        <div style={{ fontSize: 11.5, color: C.g500, fontWeight: 500, marginTop: 2 }}>{label}</div>
+        {sub && <div style={{ fontSize: 10.5, color: subColor || C.g500, fontWeight: 600, marginTop: 5 }}>{sub}</div>}
+      </div>
+    );
+  };
+
+  // —— Métricas para los KPIs y sidebar derecho ——
+  const urgCount = act.filter(t => t.pri === "URGENTE").length;
+  const today = new Date().toISOString().slice(0, 10);
+  const solvedToday = d.solved.filter(t => (t.dt || "").startsWith(today)).length;
+  const enProcesoCount = act.filter(t => t.st === "EN PROGRESO").length;
+  const enEsperaCount = act.filter(t => t.st === "PENDIENTE" || t.st === "ESPERANDO").length;
+  const criticosCount = urgCount + slaExpired.length;
+  const riesgoSlaCount = act.filter(t => slaS(t).s === "warn").length;
+  const cumplSLA = act.length > 0 ? Math.round(((act.length - slaExpired.length) / act.length) * 100) : 100;
+  // Carga de trabajo por técnico (disponibles vs ocupados)
+  const techsCount = TECHS.length;
+  const techsOcupados = new Set(act.filter(t => t.tech).map(t => t.tech)).size;
+  const cargaDisp = Math.max(techsCount - techsOcupados, 0);
+
+  // —— Helpers UI ——
+  // SLA Donut con porcentaje REAL calculado de tiempo restante / tiempo total
+  const SLADonut = ({ ticket }) => {
+    const sl = slaS(ticket);
+    if (!SLA[ticket.pri]) return null;
+    // Total de horas según prioridad y si tiene técnico asignado
+    const limHours = ticket.tech ? SLA[ticket.pri].s : SLA[ticket.pri].r;
+    // Horas transcurridas
+    const elapsedHours = (Date.now() - new Date(ticket.at).getTime()) / 36e5;
+    // Porcentaje del tiempo CONSUMIDO (0 = recién creado, 100 = vencido)
+    const consumedPct = Math.min(100, Math.max(0, (elapsedHours / limHours) * 100));
+    // El donut se LLENA conforme se consume el SLA (visual: rellenando un círculo)
+    const color = sl.s === "exp" ? "#EF4444" : sl.s === "warn" ? "#F59E0B" : "#10B981";
+    const r = 18, c = 2 * Math.PI * r;
+    return (
+      <div style={{ position: "relative", width: 50, height: 50, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="25" cy="25" r={r} stroke="#EEF2F7" strokeWidth="3.5" fill="none" />
+          <circle cx="25" cy="25" r={r} stroke={color} strokeWidth="3.5" fill="none"
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - consumedPct / 100)}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 0.5s ease, stroke 0.3s ease" }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 9.5, fontWeight: 700, color: C.navy, lineHeight: 1 }}>{sl.l}</span>
+          <span style={{ fontSize: 7, color: C.g500, marginTop: 1 }}>{sl.s === "exp" ? "" : "Restante"}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const StatusPill = ({ s }) => {
+    const map = {
+      "EN PROGRESO": { bg: "#DBEAFE", c: "#2563FF", icon: "▶", label: "En proceso" },
+      "PENDIENTE": { bg: "#FEF3C7", c: "#F59E0B", icon: "⏳", label: "Pendiente" },
+      "ESPERANDO": { bg: "#FED7AA", c: "#F97316", icon: "⏸", label: "Esperando cliente" }
+    };
+    const cfg = map[s] || map["PENDIENTE"];
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 8, background: cfg.bg, color: cfg.c, fontSize: 10.5, fontWeight: 700 }}>
+        <span>{cfg.icon}</span>{cfg.label}
+      </span>
+    );
+  };
+
+  const TechAvatar = ({ name }) => {
+    if (!name) return null;
+    const u = (users || []).find(x => x.name === name);
+    const r = u ? ROLES[u.role] : null;
+    const initials = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", background: `${r?.color || C.blue}25`, color: r?.color || C.blue, fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{u?.av || initials}</div>
+        <span style={{ fontSize: 11.5, fontWeight: 600, color: C.navy }}>{name}</span>
+      </div>
+    );
+  };
+
+  const Chip = ({ active, color, count, children, onClick }) => (
+    <button onClick={onClick} style={{
+      padding: "7px 14px",
+      borderRadius: 18,
+      border: active ? "none" : `1px solid ${C.g200}`,
+      background: active ? color : C.w,
+      color: active ? C.w : C.g600,
+      fontSize: 11.5,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      transition: "all .15s",
+      boxShadow: active ? `0 4px 12px -2px ${color}55` : "none"
+    }}>
+      {children}
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 9, background: active ? "rgba(255,255,255,0.25)" : C.g100, color: active ? C.w : C.g500, fontSize: 10, fontWeight: 700, padding: "0 5px" }}>{count}</span>
+    </button>
+  );
+
+  return (
+    <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+      {/* ============ COLUMNA PRINCIPAL ============ */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5 }}>Tickets</h1>
+          <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Clasificación IA · SLA automático · Trazabilidad SOS</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <ExportButton
+            data={[...d.tickets, ...d.solved.map(t => ({ ...t, st: "SOLUCIONADO" }))]}
+            headers={[
+              { key: "id", label: "ID" }, { key: "cid", label: "Cliente_ID" }, { key: "inc", label: "Incidente" },
+              { key: "desc", label: "Descripción" }, { key: "pri", label: "Prioridad" }, { key: "st", label: "Estado" },
+              { key: "tech", label: "Técnico" }, { key: "at", label: "Creado" }, { key: "dt", label: "Fecha_Resuelto" },
+              { key: "sol", label: "Solución" }, { key: "sat", label: "Calificación" }
+            ]}
+            filename="SOS_Tickets" dateField="at" label="Tickets" color={C.red}
+          />
+          <button onClick={() => setSN(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueL} 100%)`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px ${C.glowBlue}` }}>
+            <Plus size={14} />Nuevo Ticket
+          </button>
+        </div>
+      </div>
+
+      {/* KPIs ROW (6 tarjetas) — visibles en todas las pestañas */}
+      {(tab === "activos" || tab === "vencidos" || tab === "criticos" || tab === "enproceso" || tab === "resueltos") && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <KpiTk icon={Ticket} val={act.length} label="Activos" sub={urgCount > 0 ? `+${urgCount} urgentes` : null} subColor="#DC2626" iconColor="#DC2626" fill="#FEE2E2" fillTo="#FECACA" onClick={() => setTab("activos")} tooltip="Ver tickets activos" />
+          <KpiTk icon={AlertTriangle} val={slaExpired.length} label="Vencidos" sub={slaExpired.length > 0 ? "+ SLA vencido" : null} subColor="#F97316" iconColor="#F97316" fill="#FFEDD5" fillTo="#FED7AA" onClick={() => setTab("vencidos")} tooltip="Ver tickets con SLA vencido o en riesgo" />
+          <KpiTk icon={CheckCircle} val={solvedToday} label="Resueltos hoy" sub="+20% vs ayer" subColor="#10B981" iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0" onClick={() => setTab("resueltos")} tooltip="Ver tickets resueltos" />
+          <KpiTk icon={Clock} val={`${cumplSLA}%`} label="Cumplimiento SLA" sub="Últimos 7 días" iconColor="#3B82F6" fill="#DBEAFE" fillTo="#BFDBFE" onClick={() => setTab("vencidos")} tooltip="Ver SLA en riesgo" />
+          <KpiTk icon={Activity} val="2.4h" label="Tiempo prom. respuesta" sub="Meta: < 4h" iconColor="#8B5CF6" fill="#EDE9FE" fillTo="#DDD6FE" onClick={() => setTab("enproceso")} tooltip="Ver tickets en proceso" />
+          <KpiTk icon={DollarSign} val="$2.6M" label="Impacto prevenido IA" sub="Últimos 30 días" iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0" onClick={() => setTab("resueltos")} tooltip="Ver tickets resueltos por IA" />
+        </div>
+      )}
+
+      {/* FILTER CHIPS (reemplazan los tabs) */}
+      <div data-chip-row style={{ display: "flex", gap: 8, marginBottom: 18, overflowX: "auto", flexWrap: "nowrap", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: 2 }}>
+        <Chip active={tab === "activos"} color={C.blue} count={act.length} onClick={() => setTab("activos")}>Todos</Chip>
+        <Chip active={tab === "criticos"} color="#EF4444" count={criticosCount} onClick={() => setTab("criticos")}>Críticos</Chip>
+        <Chip active={tab === "vencidos"} color="#F59E0B" count={riesgoSlaCount} onClick={() => setTab("vencidos")}>Riesgo SLA</Chip>
+        <Chip active={tab === "enproceso"} color="#3B82F6" count={enProcesoCount} onClick={() => setTab("enproceso")}>En proceso</Chip>
+        <Chip active={tab === "resueltos"} color="#10B981" count={d.solved.length} onClick={() => setTab("resueltos")}>Resueltos</Chip>
+        <button onClick={() => setTab("consulta")} style={{ marginLeft: "auto", flexShrink: 0, padding: "7px 12px", borderRadius: 9, border: `1px solid ${C.g200}`, background: tab === "consulta" ? `${C.blue}10` : C.w, color: tab === "consulta" ? C.blue : C.g600, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <Search size={12} />Consulta
+        </button>
+      </div>
+
+      {/* TAB: ACTIVOS / VENCIDOS / CRÍTICOS / EN PROCESO — Tabla rediseñada */}
+      {(tab === "activos" || tab === "vencidos" || tab === "criticos" || tab === "enproceso") && (
+        <div>
+          {/* Search bar premium */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 240, position: "relative" }}>
+              <Search size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+              <input style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 10, border: `1px solid ${C.g200}`, fontSize: 12.5, color: C.navy, outline: "none", background: C.w, fontFamily: "inherit", boxSizing: "border-box" }} placeholder="Buscar ticket, cliente o incidente..." value={search} onChange={e => ss(e.target.value)} />
+            </div>
+            <button style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <span>▽</span> Más filtros
+            </button>
+          </div>
+
+          {/* TABLA — premium */}
+          <div data-table-outer style={{ background: C.w, borderRadius: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, overflow: "hidden" }}>
+            <div data-table-scroll style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 11.5 }}>
+                <thead>
+                  <tr>
+                    {[["TICKET",""],["CLIENTE / INCIDENTE",""],["PRIORIDAD","mobile-hide"],["SLA","mobile-hide"],["ESTADO",""],["TÉCNICO","mobile-hide"],["TRAZABILIDAD","mobile-hide tablet-hide"]].map(([h,cls]) => (
+                      <th key={h} className={cls||undefined} style={{ padding: "14px 14px", textAlign: "left", fontSize: 9.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, borderBottom: `1px solid ${C.g100}`, whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                    <th style={{ width: 36, borderBottom: `1px solid ${C.g100}` }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filt.map((t, idx) => {
+                    const cl = d.clients.find(c => c.id === t.cid);
+                    const sl = slaS(t);
+                    const isHL = highlightId === t.id;
+                    const isLast = idx === filt.length - 1;
+                    // Color de borde izquierdo según prioridad
+                    const priColor = t.pri === "URGENTE" ? "#EF4444" : t.pri === "MEDIA" ? "#F59E0B" : "#3B82F6";
+                    // Tag de categoría (Internet, Hardware, Impresoras, etc)
+                    const incLow = (t.inc || "").toLowerCase();
+                    let catTag = "General";
+                    if (incLow.includes("imprim")) catTag = "Impresoras";
+                    else if (incLow.includes("internet") || incLow.includes("wifi") || incLow.includes("red")) catTag = "Internet";
+                    else if (incLow.includes("ransom") || incLow.includes("virus") || incLow.includes("seguri")) catTag = "Seguridad";
+                    else if (incLow.includes("pc") || incLow.includes("lent") || incLow.includes("pantalla")) catTag = "Hardware";
+                    else if (incLow.includes("camar") || incLow.includes("dvr")) catTag = "Cámaras";
+                    // SOS WhatsApp message
+                    const traceText = (t.trace || []).map(e => `• ${(e.ts || "").slice(0, 16).replace("T", " ")} - ${e.type}: ${e.text}`).join("\n") || "(sin trazabilidad aún)";
+                    const waMsg = `🆘 *AYUDA URGENTE - TICKET ${t.id}*\n\n*Cliente:* ${cl?.name || "—"}\n*Teléfono:* ${cl?.phone || "—"}\n*Incidente:* ${t.inc}\n*Descripción:* ${t.desc || "—"}\n*Prioridad:* ${t.pri}\n*Estado:* ${t.st}\n*Técnico asignado:* ${t.tech || "Sin asignar"}\n*SLA:* ${sl.l}\n\n*Trazabilidad:*\n${traceText}\n\n_Necesito tu ayuda para resolver este caso._`;
+                    const waUrl = `https://wa.me/573015287543?text=${encodeURIComponent(waMsg)}`;
+                    const createdLabel = new Date(t.at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <tr key={t.id} id={"tk-row-" + t.id}
+                        onClick={() => { setTr(t); stf({ type: "recepcion", text: "" }); }}
+                        onMouseEnter={e => { if (!isHL) e.currentTarget.style.background = "#FAFBFD"; }}
+                        onMouseLeave={e => { if (!isHL) e.currentTarget.style.background = "transparent"; }}
+                        title="Clic para ver trazabilidad completa"
+                        style={{ background: isHL ? "#FEF9C3" : "transparent", transition: "background 0.15s ease", cursor: "pointer", boxShadow: `inset 4px 0 0 ${priColor}` }}
+                      >
+                        <td style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                          <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: C.navy }}>{t.id}</div>
+                          <div style={{ fontSize: 10, color: C.g500, marginTop: 3 }}>Creado: {createdLabel}</div>
+                          {(t.trace?.length || 0) > 0 && <div style={{ fontSize: 10, color: C.g400, marginTop: 3, display: "inline-flex", alignItems: "center", gap: 3 }}>💬 {t.trace.length}</div>}
+                        </td>
+                        <td style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}`, maxWidth: 240 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{cl?.name || "—"}</div>
+                          <div style={{ fontSize: 11, color: C.g500, marginTop: 3 }}>{t.inc}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6, alignItems: "center" }}>
+                            <span style={{ display: "inline-block", padding: "2px 9px", borderRadius: 12, background: "#F1F5F9", color: C.g600, fontSize: 9.5, fontWeight: 600 }}>{catTag}</span>
+                            {/* Técnico inline solo en móvil */}
+                            <span className="mobile-only-inline" style={{ display: "none", fontSize: 10, color: C.g500, fontWeight: 600 }}>
+                              👤 {t.tech || "Sin asignar"}
+                            </span>
+                            {/* Prioridad inline solo en móvil */}
+                            <span className="mobile-only-inline" style={{ display: "none", padding: "2px 7px", borderRadius: 10, background: t.pri === "URGENTE" ? "#FEE2E2" : t.pri === "MEDIA" ? "#FEF3C7" : "#DBEAFE", color: t.pri === "URGENTE" ? "#DC2626" : t.pri === "MEDIA" ? "#D97706" : "#2563FF", fontSize: 9, fontWeight: 700, letterSpacing: 0.3 }}>{t.pri}</span>
+                            {/* SLA inline solo en móvil — info crítica con estado claro */}
+                            <span className="mobile-only-inline" style={{ display: "none", padding: "2px 7px", borderRadius: 10, background: sl.s === "exp" ? "#FEE2E2" : sl.s === "warn" ? "#FEF3C7" : "#D1FAE5", color: sl.s === "exp" ? "#DC2626" : sl.s === "warn" ? "#D97706" : "#059669", fontSize: 9, fontWeight: 700, fontFamily: "monospace" }}>
+                              {sl.s === "exp" ? "🔴 Vencido" : sl.s === "warn" ? "🟡 En riesgo" : "🟢 A tiempo"} · {sl.l}
+                            </span>
+                          </div>
+                          {/* Botones rápidos — solo móvil */}
+                          <div className="mobile-only-inline" style={{ display: "none", marginTop: 8, gap: 6, flexWrap: "wrap" }} onClick={e => e.stopPropagation()}>
+                            <button onClick={() => { setTr(t); stf({ type: "recepcion", text: "" }); }}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", minHeight: 32 }}>
+                              <History size={11} /> Trazabilidad
+                            </button>
+                            <a href={waUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: "#EF4444", color: C.w, fontSize: 10, fontWeight: 700, textDecoration: "none", minHeight: 32 }}>
+                              ▶ SOS
+                            </a>
+                            {!t.tech && (
+                              <select onClick={e => e.stopPropagation()} onChange={e => { if (e.target.value) assign(t.id, e.target.value); }} value=""
+                                style={{ padding: "5px 8px", borderRadius: 7, border: `1px solid ${C.g200}`, fontSize: 10, color: C.g600, background: C.w, fontFamily: "inherit", cursor: "pointer", minHeight: 32 }}>
+                                <option value="">Asignar técnico…</option>
+                                {TECHS.map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            )}
+                          </div>
+                        </td>
+                        <td className="mobile-hide" style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                          <span style={{ display: "inline-block", padding: "5px 11px", borderRadius: 8, background: t.pri === "URGENTE" ? "#FEE2E2" : t.pri === "MEDIA" ? "#FEF3C7" : "#DBEAFE", color: t.pri === "URGENTE" ? "#DC2626" : t.pri === "MEDIA" ? "#D97706" : "#2563FF", fontSize: 10, fontWeight: 700, letterSpacing: 0.4 }}>{t.pri}</span>
+                          <div style={{ fontSize: 10, color: priColor, marginTop: 6, fontWeight: 600 }}>↑ {t.pri === "URGENTE" ? "Crítico" : t.pri === "MEDIA" ? "Media" : "Baja"}</div>
+                        </td>
+                        <td className="mobile-hide" style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                          <SLADonut ticket={t} />
+                          <div style={{ fontSize: 10, marginTop: 4, fontWeight: 700, color: sl.s === "exp" ? "#DC2626" : sl.s === "warn" ? "#D97706" : "#059669" }}>
+                            {sl.s === "exp" ? "🔴 Vencido" : sl.s === "warn" ? "🟡 En riesgo" : "🟢 A tiempo"}
+                          </div>
+                          <div style={{ fontSize: 9, color: C.g500, marginTop: 2, fontFamily: "monospace" }}>
+                            {sl.s === "exp" ? sl.l : `Vence ${new Date(new Date(t.at).getTime() + (SLA[t.pri]?.s || 24) * 3600 * 1000).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`}
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                          <StatusPill s={t.st} />
+                          <div style={{ fontSize: 10, color: C.g500, marginTop: 6 }}>{t.tech ? "Asignado" : "Por iniciar"}</div>
+                        </td>
+                        <td className="mobile-hide" style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }} onClick={e => e.stopPropagation()}>
+                          {t.tech
+                            ? <TechAvatar name={t.tech} />
+                            : <select onChange={e => { if (e.target.value) assign(t.id, e.target.value); }} value="" style={{ padding: "6px 9px", borderRadius: 7, border: `1px solid ${C.g200}`, fontSize: 11, color: C.g600, background: C.w, fontFamily: "inherit", cursor: "pointer" }}>
+                                <option value="">Asignar...</option>
+                                {TECHS.map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                          }
+                        </td>
+                        <td className="mobile-hide tablet-hide" style={{ padding: "16px 14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            <button onClick={() => { setTr(t); stf({ type: "recepcion", text: "" }); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 7, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                              <History size={11} /> Ver trazabilidad
+                            </button>
+                            <a href={waUrl} target="_blank" rel="noopener noreferrer" title="SOS — Enviar alerta al líder operativo por WhatsApp con toda la información del ticket" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "#EF4444", color: C.w, fontSize: 10.5, fontWeight: 700, textDecoration: "none", boxShadow: `0 4px 10px -2px rgba(239,68,68,0.4)`, animation: "pulse-sos 2.5s ease-in-out infinite" }}>
+                              ▶ SOS
+                            </a>
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px 8px", borderBottom: isLast ? "none" : `1px solid ${C.g100}`, textAlign: "center", position: "relative" }} onClick={e => e.stopPropagation()}>
+                          <div style={{ position: "relative", display: "inline-block" }}>
+                            <button onClick={() => setOpenMenu(openMenu === t.id ? null : t.id)} title="Más opciones" style={{ background: openMenu === t.id ? "#F1F5F9" : "none", border: "none", color: C.g500, fontSize: 16, cursor: "pointer", padding: "4px 8px", borderRadius: 6, fontFamily: "inherit" }}>⋮</button>
+                            {openMenu === t.id && (
+                              <div style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, minWidth: 200, background: C.w, border: `1px solid ${C.g200}`, borderRadius: 10, boxShadow: "0 10px 24px rgba(15,23,42,0.12)", zIndex: 20, padding: 4 }}>
+                                {[
+                                  { l: "Ver trazabilidad",      i: History,        onClick: () => { setTr(t); stf({ type: "recepcion", text: "" }); setOpenMenu(null); } },
+                                  { l: "Reasignar a otro técnico", i: Send,        onClick: () => { setReasignModal(t); setReasignTech(""); setReasignReason(""); setOpenMenu(null); } },
+                                  { l: "Pedir ayuda urgente",   i: AlertTriangle, onClick: () => { setHelpModal(t); setHelpForm({ toUserId: "", message: "" }); setOpenMenu(null); } },
+                                  { l: "Marcar como resuelto",  i: CheckCircle,    onClick: () => { setTr(t); stf({ type: "resuelto", text: "Resuelto desde menú rápido" }); setOpenMenu(null); } },
+                                  { l: "Ver cliente",           i: User,           onClick: () => { go && go("clients"); setOpenMenu(null); } }
+                                ].map((o, oi) => (
+                                  <button key={oi} onClick={o.onClick} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", color: C.navy, fontSize: 11.5, fontWeight: 500, fontFamily: "inherit", textAlign: "left", borderRadius: 7 }}
+                                    onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+                                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                    <o.i size={13} color={C.g500} strokeWidth={1.85} />
+                                    {o.l}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {!filt.length && <div style={{ textAlign: "center", padding: 32, color: C.g400, fontSize: 12 }}>Sin tickets en esta vista</div>}
+
+            {/* Pagination footer */}
+            {filt.length > 0 && (
+              <div style={{ padding: "14px 18px", borderTop: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <span style={{ fontSize: 11, color: C.g500 }}>Mostrando 1 a {filt.length} de {filt.length} tickets</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: C.g500 }}>Mostrar</span>
+                  <select style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.g200}`, fontSize: 11, color: C.g600, background: C.w, fontFamily: "inherit", cursor: "pointer" }}><option>10</option><option>25</option><option>50</option></select>
+                  <span style={{ fontSize: 11, color: C.g500 }}>por página</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: RESUELTOS */}
+      {tab === "resueltos" && (
+        <div>
+          <div data-table-outer style={{ borderRadius: 11, overflow: "hidden" }}>
+          <div data-table-scroll style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, overflow: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${C.g100}` }}>
+                  {[["ID",""],["Cliente",""],["Incidente",""],["Prior.","mobile-hide"],["Técnico","mobile-hide"],["Fecha","mobile-hide tablet-hide"],["Solución","mobile-hide"],["Calif.",""]].map(([h,cls]) => (
+                    <th key={h} className={cls||undefined} style={{ padding: "7px 9px", textAlign: "left", fontSize: 9, fontWeight: 700, color: C.g500, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...d.solved].sort((a, b) => new Date(b.dt || b.deliveredAt || 0).getTime() - new Date(a.dt || a.deliveredAt || 0).getTime()).map(t => {
+                  const cl = d.clients.find(c => c.id === t.cid);
+                  const isHL = highlightId === t.id;
+                  return (
+                    <tr key={t.id} id={"tk-row-" + t.id}
+                      onClick={() => { setTr(t); stf({ type: "recepcion", text: "" }); }}
+                      onMouseEnter={e => { if (!isHL) e.currentTarget.style.background = C.g50; }}
+                      onMouseLeave={e => { if (!isHL) e.currentTarget.style.background = "transparent"; }}
+                      title="Clic para ver trazabilidad completa"
+                      style={{ borderBottom: `1px solid ${C.g100}`, background: isHL ? "#FEF08A" : "transparent", transition: "background 0.2s ease", boxShadow: isHL ? `inset 0 0 0 2px ${C.warn}` : "none", cursor: "pointer" }}
+                    >
+                      <td style={{ padding: "7px 9px", fontFamily: "monospace", fontSize: 9.5, color: C.g400 }}>{t.id}</td>
+                      <td style={{ padding: "7px 9px", fontWeight: 600, color: C.navy }}>{cl?.name}</td>
+                      <td style={{ padding: "7px 9px", color: C.navy }}>{t.inc}</td>
+                      <td className="mobile-hide" style={{ padding: "7px 9px" }}><Tg>{t.pri}</Tg></td>
+                      <td className="mobile-hide" style={{ padding: "7px 9px", fontSize: 10, color: C.g600 }}>{t.tech}</td>
+                      <td className="mobile-hide tablet-hide" style={{ padding: "7px 9px", fontSize: 10, color: C.g500 }}>{t.dt}</td>
+                      <td className="mobile-hide" style={{ padding: "7px 9px", fontSize: 10, color: C.ok, maxWidth: 180 }}>{t.sol}</td>
+                      <td style={{ padding: "7px 9px" }}>
+                        {t.sat > 0
+                          ? <span style={{ color: "#FCD34D" }}>{"★".repeat(t.sat)}{"☆".repeat(5 - t.sat)}</span>
+                          : <span style={{ fontSize: 9, color: C.g400 }}>Sin calif.</span>
+                        }
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {!d.solved.length && <div style={{ textAlign: "center", padding: 24, color: C.g400, fontSize: 11 }}>Sin tickets resueltos</div>}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CONSULTA CLIENTE */}
+      {tab === "consulta" && (
+        <div>
+          <div style={{ background: `${C.blue}08`, borderRadius: 11, border: `1px solid ${C.blue}25`, padding: 14, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Search size={16} color={C.blue} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.blue }}>Consulta el estado de tu servicio</span>
+            </div>
+            <p style={{ fontSize: 11, color: C.g500, marginBottom: 10 }}>Ingresa el número de ticket o cédula para ver el historial completo en tiempo real.</p>
+            <div style={{ position: "relative" }}>
+              <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+              <input style={{ ...is, paddingLeft: 28, fontSize: 14, padding: "10px 10px 10px 30px" }}
+                placeholder="TK-0001, cédula o nombre del cliente..."
+                value={qid} onChange={e => setQid(e.target.value)} />
+            </div>
+          </div>
+
+          {qid.length >= 2 && (() => {
+            const allTk = [
+              ...d.tickets.map(t => ({ ...t, solved: false })),
+              ...d.solved.map(t => ({ ...t, st: "SOLUCIONADO", solved: true }))
+            ];
+            const found = allTk.filter(t => {
+              const cl = d.clients.find(c => c.id === t.cid);
+              const q = qid.toLowerCase();
+              return t.id.toLowerCase().includes(q) || cl?.name.toLowerCase().includes(q) || cl?.nit.includes(q) || cl?.phone.includes(q);
+            });
+
+            if (!found.length) return (
+              <div style={{ textAlign: "center", padding: 30, color: C.g400 }}>
+                <Search size={28} color={C.g300} style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 12, fontWeight: 600 }}>No se encontraron resultados</div>
+              </div>
+            );
+
+            return found.map(t => {
+              const cl = d.clients.find(c => c.id === t.cid);
+              const sl = !t.solved ? slaS(t) : null;
+              const publicTrace = (t.trace || []).filter(e => {
+                const tt = TRACE_TYPES.find(x => x.id === e.type);
+                return tt ? tt.visible : true;
+              });
+
+              // Paso actual (último público)
+              const lastPublic = [...publicTrace].reverse()[0];
+              const lastPhase = lastPublic ? TRACE_TYPES.find(x => x.id === lastPublic.type) : null;
+
+              // Barra de progreso — pasos ordenados (sin nota_interna)
+              const progressSteps = TRACE_TYPES.filter(x => x.visible);
+              const currentIdx = lastPhase ? progressSteps.findIndex(x => x.id === lastPhase.id) : -1;
+
+              return (
+                <div key={t.id} style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, marginBottom: 10, overflow: "hidden" }}>
+                  {/* Header */}
+                  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: t.solved ? `${C.ok}06` : `${C.blue}04` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: C.navy }}>{t.id}</span>
+                      <Tg>{t.solved ? "SOLUCIONADO" : t.st}</Tg>
+                      <Tg>{t.pri}</Tg>
+                    </div>
+                    {sl && <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "monospace", color: sl.s === "exp" ? C.err : sl.s === "warn" ? C.warn : C.ok }}>SLA: {sl.l}</span>}
+                  </div>
+
+                  <div style={{ padding: 16 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.navy, marginBottom: 4 }}>{t.inc}</div>
+                    {t.desc && <div style={{ fontSize: 11, color: C.g500, marginBottom: 12 }}>{t.desc}</div>}
+
+                    {/* Info cards */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8, marginBottom: 14 }}>
+                      <div style={{ padding: 9, borderRadius: 8, background: C.g50, border: `1px solid ${C.g100}` }}>
+                        <div style={{ fontSize: 8.5, fontWeight: 600, color: C.g400, textTransform: "uppercase", marginBottom: 2 }}>Cliente</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>{cl?.name}</div>
+                        {cl?.phone && <a href={`tel:${cl.phone}`} style={{ fontSize: 10, color: C.blue, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }} title="Llamar"><Phone size={10} /> {cl.phone}</a>}
+                        {cl?.wa && <a href={`https://wa.me/${cl.wa}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: C.ok, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 8 }} title="Abrir WhatsApp">💬 WhatsApp</a>}
+                      </div>
+                      <div style={{ padding: 9, borderRadius: 8, background: C.g50, border: `1px solid ${C.g100}` }}>
+                        <div style={{ fontSize: 8.5, fontWeight: 600, color: C.g400, textTransform: "uppercase", marginBottom: 2 }}>Técnico</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: t.tech ? C.navy : C.warn }}>{t.tech || "Sin asignar"}</div>
+                        {t.tech && <div style={{ fontSize: 10, color: C.ok }}>✅ Asignado</div>}
+                      </div>
+                      <div style={{ padding: 9, borderRadius: 8, background: C.g50, border: `1px solid ${C.g100}` }}>
+                        <div style={{ fontSize: 8.5, fontWeight: 600, color: C.g400, textTransform: "uppercase", marginBottom: 2 }}>Fase actual</div>
+                        {lastPhase
+                          ? <div style={{ fontSize: 12, fontWeight: 700, color: lastPhase.color }}>{lastPhase.emoji} {lastPhase.label}</div>
+                          : <div style={{ fontSize: 11, color: C.g400 }}>Recibido</div>
+                        }
+                      </div>
+                    </div>
+
+                    {/* Barra de progreso visual */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: C.g400, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Progreso del servicio</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto" }}>
+                        {progressSteps.map((step, i) => {
+                          const done2 = i <= currentIdx;
+                          const isCurrent = i === currentIdx;
+                          return (
+                            <div key={step.id} style={{ display: "flex", alignItems: "center", flex: i < progressSteps.length - 1 ? 1 : "none" }}>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 44 }}>
+                                <div style={{
+                                  width: isCurrent ? 26 : 20,
+                                  height: isCurrent ? 26 : 20,
+                                  borderRadius: "50%",
+                                  background: done2 ? step.color : C.g200,
+                                  border: isCurrent ? `3px solid ${step.color}` : "2px solid transparent",
+                                  boxShadow: isCurrent ? `0 0 0 3px ${step.color}20` : "none",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  fontSize: isCurrent ? 11 : 9,
+                                  transition: "all .2s",
+                                  color: done2 ? "white" : C.g400,
+                                  fontWeight: 700
+                                }}>{done2 ? (isCurrent ? step.emoji : "✓") : ""}</div>
+                                <div style={{ fontSize: 7.5, color: done2 ? step.color : C.g300, marginTop: 3, textAlign: "center", fontWeight: isCurrent ? 700 : 400, whiteSpace: "nowrap" }}>
+                                  {step.label.split(" ")[0]}
+                                </div>
+                              </div>
+                              {i < progressSteps.length - 1 && (
+                                <div style={{ flex: 1, height: 2, background: i < currentIdx ? step.color : C.g200, minWidth: 10 }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Historial de trazabilidad (solo entradas públicas) */}
+                    <div style={{ marginBottom: t.solved ? 12 : 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: C.g400, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                        Historial del servicio ({publicTrace.length} {publicTrace.length === 1 ? "entrada" : "entradas"})
+                      </div>
+                      {publicTrace.length > 0
+                        ? <TimelinePublic trace={publicTrace} />
+                        : <div style={{ fontSize: 11, color: C.g400, fontStyle: "italic" }}>El técnico aún no ha registrado actualizaciones.</div>
+                      }
+                    </div>
+
+                    {/* Calificación si está resuelto */}
+                    {t.solved && t.sat > 0 && (
+                      <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: `${C.warn}08`, border: `1px solid ${C.warn}20` }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: C.g400, marginBottom: 3 }}>TU CALIFICACIÓN</div>
+                        <span style={{ fontSize: 18, color: "#FCD34D" }}>{"★".repeat(t.sat)}{"☆".repeat(5 - t.sat)}</span>
+                        {t.cmt && <div style={{ fontSize: 10, color: C.blue, fontStyle: "italic", marginTop: 3 }}>"{t.cmt}"</div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+
+          {qid.length < 2 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+              <div onClick={() => setTab("activos")} title="Ver tickets activos" style={{ background: C.w, borderRadius: 10, border: `1px solid ${C.g200}`, padding: 14, textAlign: "center", cursor: "pointer", transition: "all .15s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 10px ${C.red}20`; }} onMouseLeave={e => { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <Ticket size={24} color={C.red} style={{ marginBottom: 6 }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>Tickets Activos</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: C.red, fontFamily: "monospace" }}>{act.length}</div>
+              </div>
+              <div onClick={() => setTab("resueltos")} title="Ver tickets resueltos" style={{ background: C.w, borderRadius: 10, border: `1px solid ${C.g200}`, padding: 14, textAlign: "center", cursor: "pointer", transition: "all .15s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = C.ok; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 10px ${C.ok}20`; }} onMouseLeave={e => { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <CheckCircle size={24} color={C.ok} style={{ marginBottom: 6 }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>Resueltos</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: C.ok, fontFamily: "monospace" }}>{d.solved.length}</div>
+              </div>
+              <div onClick={() => go && go("postsale")} title="Ver módulo Post-venta" style={{ background: C.w, borderRadius: 10, border: `1px solid ${C.g200}`, padding: 14, textAlign: "center", cursor: "pointer", transition: "all .15s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = C.warn; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 10px ${C.warn}20`; }} onMouseLeave={e => { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <Star size={24} color={C.warn} style={{ marginBottom: 6 }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>Calificados</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: C.warn, fontFamily: "monospace" }}>{d.solved.filter(t => t.sat > 0).length}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== FIN COLUMNA PRINCIPAL ========== */}
+      </div>
+
+      {/* ============ SIDEBAR DERECHO IA ============ */}
+      <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }} data-tk-aside>
+        {/* Insights IA */}
+        <InsightsIA
+          moduleName="Tickets"
+          items={[
+            { tone: "warn",  icon: AlertTriangle, title: "Riesgo alto de vencimiento",
+              text: `${riesgoSlaCount + slaExpired.length} ticket${riesgoSlaCount + slaExpired.length === 1 ? "" : "s"} pueden vencerse pronto`,
+              detail: `Detectamos ${riesgoSlaCount} ticket(s) en estado "warn" (cerca del SLA) y ${slaExpired.length} ya vencido(s). Reasignar al técnico disponible o escalar a Alexander para cerrar antes del límite.`,
+              recommendation: "Filtra por chip 'Críticos' o 'Riesgo SLA' arriba y reasigna desde el botón de cada fila.",
+              action: () => setTab("vencidos") },
+            { tone: "info",  icon: Activity, title: "Patrón detectado",
+              text: `${act.filter(t => (t.inc || "").toLowerCase().includes("imprim")).length} tickets de "No imprime" esta semana`,
+              detail: "Se repite el mismo incidente con varias impresoras. Probable problema sistémico (driver actualizado, cola de impresión, configuración de red).",
+              recommendation: "Crea un artículo en Centro de Conocimiento con el procedimiento estándar para ahorrar tiempo en futuros casos.",
+              action: () => go && go("knowledge") },
+            { tone: "alert", icon: User, title: "Cliente en riesgo",
+              text: "Papelería Norma ha abierto 3 tickets en 15 días",
+              detail: "El cliente reporta problemas recurrentes. Riesgo de churn. Ofrecer visita preventiva o upgrade de plan.",
+              recommendation: "Llama o envía un mensaje IA desde CRM ofreciendo Plan Total para anticipar problemas.",
+              action: () => go && go("clients") }
+          ]}
+          extra={[
+            { tone: "purple", icon: Target, title: "Ajustar SLAs por prioridad", text: "URGENTE actualmente 6h respuesta. Recomendamos 4h.", detail: "Los SLAs cortos mejoran la percepción de servicio y la retención de clientes premium." },
+            { tone: "ok",    icon: TrendingUp, title: "Tasa de resolución arriba", text: "85% resueltos en menos de 24h este mes (+12%).", detail: "Mantén el ritmo. Comparte los procesos exitosos en el Centro de Conocimiento." }
+          ]}
+        />
+
+        {/* Carga de trabajo */}
+        <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: "0 0 14px" }}>Carga de trabajo</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {(() => {
+              const total = cargaDisp + enProcesoCount + enEsperaCount;
+              const tot = total > 0 ? total : 1;
+              const pDisp = cargaDisp / tot;
+              const pProc = enProcesoCount / tot;
+              const pEsp = enEsperaCount / tot;
+              const r = 28, c = 2 * Math.PI * r;
+              return (
+                <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx="40" cy="40" r={r} stroke="#EEF2F7" strokeWidth="9" fill="none" />
+                  <circle cx="40" cy="40" r={r} stroke="#10B981" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - pDisp)} />
+                  <circle cx="40" cy="40" r={r} stroke="#3B82F6" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - pProc)} style={{ transformOrigin: "center", transform: `rotate(${pDisp * 360}deg)` }} />
+                  <circle cx="40" cy="40" r={r} stroke="#F59E0B" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - pEsp)} style={{ transformOrigin: "center", transform: `rotate(${(pDisp + pProc) * 360}deg)` }} />
+                </svg>
+              );
+            })()}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, fontSize: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} /><span style={{ fontWeight: 700, color: C.navy }}>{cargaDisp}</span><span style={{ color: C.g500 }}>Disponibles</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} /><span style={{ fontWeight: 700, color: C.navy }}>{enProcesoCount}</span><span style={{ color: C.g500 }}>En proceso</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} /><span style={{ fontWeight: 700, color: C.navy }}>{enEsperaCount}</span><span style={{ color: C.g500 }}>En espera</span></div>
+            </div>
+          </div>
+          <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 10, marginTop: 14 }}>
+            <button onClick={() => go && go("users")} style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver capacidad del equipo →</button>
+          </div>
+        </div>
+
+        {/* Atajos rápidos */}
+        <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: "0 0 12px" }}>Atajos rápidos</h3>
+          {[
+            { i: Search,    l: "Consultar ticket",       go: () => setTab("consulta") },
+            { i: BookOpen,  l: "Base de conocimiento",   go: () => go && go("knowledge") },
+            { i: AlertTriangle, l: "Reportar incidente", go: () => setSN(true) },
+            { i: FileText,  l: "Plantillas de respuesta", go: () => go && go("knowledge") }
+          ].map((a, i) => (
+            <button key={i} onClick={a.go} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 8px", background: "transparent", border: "none", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: "pointer", color: C.navy, fontSize: 11.5, fontWeight: 500, fontFamily: "inherit", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <a.i size={14} color={C.g500} strokeWidth={1.85} />
+              <span style={{ flex: 1 }}>{a.l}</span>
+              <span style={{ color: C.g300 }}>›</span>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      {/* ============ FIN LAYOUT ============ */}
+
+      {/* MODAL: Nuevo Ticket */}
+      <Mo open={sn} onClose={() => setSN(false)} title="Nuevo Ticket">
+        <Fl label="Cliente" req>
+          <select style={is} value={nf.cid} onChange={e => snf(p => ({ ...p, cid: e.target.value }))}>
+            <option value="">Seleccionar...</option>
+            {d.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Fl>
+        <Fl label="Categoría">
+          <select style={is} value={nf.cat} onChange={e => snf(p => ({ ...p, cat: e.target.value, inc: "" }))}>
+            <option value="">Todas</option>
+            {Object.keys(CATS).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Fl>
+        <Fl label="Incidente" req>
+          <select style={is} value={nf.inc} onChange={e => snf(p => ({ ...p, inc: e.target.value }))}>
+            <option value="">Seleccionar...</option>
+            {(nf.cat ? CATS[nf.cat] || [] : Object.values(CATS).flat()).map(i => <option key={i} value={i}>{i}</option>)}
+          </select>
+        </Fl>
+        <Fl label="Descripción">
+          <textarea style={{ ...is, minHeight: 55 }} value={nf.desc} onChange={e => snf(p => ({ ...p, desc: e.target.value }))} />
+        </Fl>
+        <Bt onClick={create} icon={Plus}>Crear — IA clasifica prioridad</Bt>
+      </Mo>
+
+      {/* MODAL: TRAZABILIDAD */}
+      <Mo open={!!tr} onClose={() => setTr(null)} title="Trazabilidad del Caso">
+        {tr && (
+          <div>
+            {/* Header del ticket */}
+            <div style={{ background: C.g50, borderRadius: 8, padding: 10, marginBottom: 12, border: `1px solid ${C.g100}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>{tr.id} — {tr.inc}</div>
+                  <div style={{ fontSize: 10, color: C.g500, marginTop: 3 }}>
+                    Cliente: {d.clients.find(c => c.id === tr.cid)?.name || "—"} · Técnico: {tr.tech || "Sin asignar"} · Estado: {tr.st}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  <button onClick={() => { setHelpModal(tr); setHelpForm({ toUserId: "", message: "" }); }} title="Pedir ayuda a otro técnico (mensaje rápido)" style={{ background: C.purple, color: C.w, border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    <Send size={11} />Pedir Ayuda
+                  </button>
+                  <button onClick={() => { setReasignModal(tr); setReasignTech(""); setReasignReason(""); }} title="Reasignar este ticket a otro técnico" style={{ background: C.warn, color: C.w, border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                    🔄 Reasignar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Historial completo (técnicos ven todo, incluidas notas internas) */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                Historial completo ({(tr.trace || []).length} entradas)
+              </div>
+              {(!tr.trace || tr.trace.length === 0) && (
+                <div style={{ fontSize: 11, color: C.g400, fontStyle: "italic", padding: "10px 0", textAlign: "center" }}>
+                  Sin entradas. Agrega la primera abajo ↓
+                </div>
+              )}
+              <div style={{ position: "relative", paddingLeft: 20 }}>
+                {(tr.trace || []).length > 0 && (
+                  <div style={{ position: "absolute", left: 7, top: 8, bottom: 8, width: 2, background: C.g200 }} />
+                )}
+                {(tr.trace || []).slice().reverse().map((e, i) => {
+                  const tt = TRACE_TYPES.find(x => x.id === e.type) || { color: C.g400, emoji: "•", label: e.type, visible: true };
+                  const isInternal = !tt.visible;
+                  return (
+                    <div key={i} style={{ position: "relative", paddingLeft: 20, marginBottom: 10 }}>
+                      <div style={{
+                        position: "absolute", left: -1, top: 4, width: 14, height: 14, borderRadius: "50%",
+                        background: tt.color, border: "2px solid white",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "white"
+                      }}>●</div>
+                      <div style={{
+                        borderRadius: "0 8px 8px 8px",
+                        border: `1px solid ${isInternal ? C.err + "40" : C.g200}`,
+                        background: isInternal ? `${C.err}05` : C.g50,
+                        padding: "7px 10px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ fontSize: 9.5, fontWeight: 700, color: tt.color, textTransform: "uppercase" }}>
+                              {tt.emoji} {tt.label}
+                            </span>
+                            {isInternal && (
+                              <span style={{ fontSize: 8, background: `${C.err}15`, color: C.err, padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>
+                                🔒 Solo equipo
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 8.5, color: C.g400, fontFamily: "monospace" }}>
+                            {new Date(e.ts).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: C.navy, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{e.text}</div>
+                        {e.tech && e.tech !== "—" && (
+                          <div style={{ fontSize: 9, color: C.g400, marginTop: 3 }}>👤 {e.tech}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Nueva entrada */}
+            <div style={{ borderTop: `1px solid ${C.g200}`, paddingTop: 12 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                Nueva entrada
+              </div>
+              <Fl label="Tipo de actualización" req>
+                <select style={is} value={tf.type} onChange={e => stf(p => ({ ...p, type: e.target.value }))}>
+                  {TRACE_TYPES.map(tt => (
+                    <option key={tt.id} value={tt.id}>
+                      {tt.emoji} {tt.label}{!tt.visible ? " 🔒" : ""}
+                    </option>
+                  ))}
+                </select>
+              </Fl>
+              {/* Descripción de ayuda del tipo seleccionado */}
+              {tf.type && (() => {
+                const tt = TRACE_TYPES.find(x => x.id === tf.type);
+                return tt ? (
+                  <div style={{ fontSize: 9.5, color: C.g400, fontStyle: "italic", marginBottom: 7, padding: "4px 8px", background: C.g50, borderRadius: 5, border: `1px solid ${C.g100}` }}>
+                    💡 {tt.desc}
+                  </div>
+                ) : null;
+              })()}
+              <Fl label="Detalle" req>
+                <textarea
+                  style={{ ...is, minHeight: 70 }}
+                  value={tf.text}
+                  onChange={e => stf(p => ({ ...p, text: e.target.value }))}
+                  placeholder="Describe la actualización con el mayor detalle posible..."
+                />
+              </Fl>
+              <Bt onClick={addTrace} v="blue" icon={Plus}>Agregar entrada</Bt>
+            </div>
+          </div>
+        )}
+      </Mo>
+
+      {/* MODAL: Reasignar ticket */}
+      <Mo open={!!reasignModal} onClose={() => setReasignModal(null)} title="🔄 Reasignar Ticket">
+        {reasignModal && (
+          <div>
+            <div style={{ background: `${C.warn}10`, borderRadius: 7, padding: 10, marginBottom: 12, border: `1px solid ${C.warn}30` }}>
+              <div style={{ fontSize: 11, color: C.warn, fontWeight: 700, marginBottom: 4 }}>⚠️ Este ticket pasará a otro técnico</div>
+              <div style={{ fontSize: 10.5, color: C.g600, lineHeight: 1.5 }}>
+                Usa esta opción cuando NO puedas resolverlo definitivamente. El técnico asignado recibirá una notificación inmediata.
+              </div>
+            </div>
+
+            <div style={{ background: C.g50, borderRadius: 7, padding: 10, marginBottom: 12, border: `1px solid ${C.g100}` }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>{reasignModal.id} — {reasignModal.inc}</div>
+              <div style={{ fontSize: 10, color: C.g500, marginTop: 3 }}>
+                Cliente: {d.clients.find(c => c.id === reasignModal.cid)?.name || "—"} · Técnico actual: <strong>{reasignModal.tech || "Sin asignar"}</strong>
+              </div>
+            </div>
+
+            <Fl label="Reasignar a" req>
+              <select style={is} value={reasignTech} onChange={e => setReasignTech(e.target.value)}>
+                <option value="">Seleccionar técnico...</option>
+                {TECHS.filter(t => t !== reasignModal.tech).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </Fl>
+
+            <Fl label="Motivo (opcional, ayuda al nuevo técnico)">
+              <textarea style={{ ...is, minHeight: 70 }} value={reasignReason} onChange={e => setReasignReason(e.target.value)} placeholder="Ej: No tengo experiencia con servidores Linux. He intentado los últimos 2 días sin éxito." />
+            </Fl>
+
+            <div style={{ fontSize: 9.5, color: C.g500, marginBottom: 5 }}>Motivos rápidos:</div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 11 }}>
+              {[
+                "No tengo experiencia con este tipo de caso",
+                "Estoy fuera de la ciudad",
+                "Carga de trabajo muy alta",
+                "El cliente prefiere otro técnico"
+              ].map((m, i) => (
+                <button key={i} onClick={() => setReasignReason(m)} style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${C.g200}`, background: C.g50, fontSize: 9.5, color: C.g600, cursor: "pointer", fontFamily: "inherit" }}>{m.slice(0, 35)}</button>
+              ))}
+            </div>
+
+            <button onClick={doReasignar} style={{ background: C.warn, color: C.w, border: "none", borderRadius: 7, padding: "9px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
+              <Send size={13} /> Confirmar Reasignación
+            </button>
+          </div>
+        )}
+      </Mo>
+
+      {/* MODAL: Pedir Ayuda — notificación entre usuarios */}
+      <Mo open={!!helpModal} onClose={() => setHelpModal(null)} title="📨 Pedir Ayuda a otro Técnico">
+        {helpModal && (
+          <div>
+            <div style={{ background: `${C.purple}08`, borderRadius: 7, padding: 10, marginBottom: 12, border: `1px solid ${C.purple}25` }}>
+              <div style={{ fontSize: 11, color: C.purple, lineHeight: 1.5 }}>
+                💡 Envía una notificación directa a un compañero pidiéndole apoyo con este caso. Le llegará a su campanita 🔔 con prioridad alta.
+              </div>
+            </div>
+
+            <div style={{ background: C.g50, borderRadius: 7, padding: 10, marginBottom: 12, border: `1px solid ${C.g100}` }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>{helpModal.id} — {helpModal.inc}</div>
+              <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>
+                Cliente: {d.clients.find(c => c.id === helpModal.cid)?.name || "—"}
+              </div>
+            </div>
+
+            <Fl label="Enviar a" req>
+              <select style={is} value={helpForm.toUserId} onChange={e => setHelpForm(p => ({ ...p, toUserId: e.target.value }))}>
+                <option value="">Seleccionar usuario...</option>
+                {(users || []).filter(u => u.id !== cu?.id && u.on).map(u => (
+                  <option key={u.id} value={u.id}>{u.name}{u.role ? ` (${u.role.replace("_", " ")})` : ""}</option>
+                ))}
+              </select>
+            </Fl>
+
+            <Fl label="Mensaje" req>
+              <textarea style={{ ...is, minHeight: 80 }} value={helpForm.message} onChange={e => setHelpForm(p => ({ ...p, message: e.target.value }))} placeholder="Ej: Hola, no logré resolver el problema del servidor. ¿Me puedes ayudar?" />
+            </Fl>
+
+            {/* Atajos rápidos */}
+            <div style={{ fontSize: 9.5, color: C.g500, marginBottom: 5 }}>Mensajes rápidos:</div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 11 }}>
+              {[
+                "Necesito ayuda con este caso, no logré resolverlo.",
+                "Por favor, escala este ticket — es complejo.",
+                "Cliente molesto, requiere atención inmediata.",
+                "Necesito segunda opinión técnica."
+              ].map((m, i) => (
+                <button key={i} onClick={() => setHelpForm(p => ({ ...p, message: m }))} style={{ padding: "3px 8px", borderRadius: 5, border: `1px solid ${C.g200}`, background: C.g50, fontSize: 9.5, color: C.g600, cursor: "pointer", fontFamily: "inherit" }}>{m.slice(0, 30)}...</button>
+              ))}
+            </div>
+
+            <Bt onClick={askHelp} v="purple" icon={Send}>Enviar Notificación</Bt>
+          </div>
+        )}
+      </Mo>
+    </div>
+  );
+}
+/* === PAGE: CLIENTES === */
+// Helper: arma el link de WhatsApp usando wa (si existe) o phone con prefijo Colombia
+function waLink(client, text) {
+  let num = String(client?.wa || client?.phone || "").replace(/[^0-9]/g, "");
+  if (!num) return null;
+  // Si no empieza con 57 y tiene 10 dígitos (móvil Colombia) → agregar prefijo
+  if (num.length === 10 && !num.startsWith("57")) num = "57" + num;
+  return `https://wa.me/${num}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
+
+function PgCl({ data: d, setData: sd, aa }) {
+  const [search, ss] = useState("");
+  const [sn, setSN] = useState(false);
+  const [sel, setSel] = useState(null);
+  const [tab, setTab] = useState("lista");
+  const [iaMsg, setIaMsg] = useState(null); // { client, defaultType }
+  const [planFilter, setPlanFilter] = useState("todos");
+  const [segFilter, setSegFilter] = useState("todos");
+  const [typeFilter, setTypeFilter] = useState("todos");
+  const [nf, snf] = useState({ name: "", nit: "", contact: "", phone: "", email: "", wa: "", nb: "", city: "Medellín", type: "Empresa", seg: "microempresa", plan: "Por demanda", dev: 1 });
+
+  // Helpers
+  const today = Date.now();
+  function lastContact(cid) {
+    const dates = [];
+    d.tickets.filter(t => t.cid === cid).forEach(t => { if (t.at) dates.push(t.at); (t.trace || []).forEach(e => dates.push(e.ts)); });
+    d.solved.filter(t => t.cid === cid).forEach(t => { if (t.dt) dates.push(t.dt); (t.trace || []).forEach(e => dates.push(e.ts)); });
+    (d.events || []).filter(e => e.cid === cid).forEach(e => dates.push(e.date));
+    if (dates.length === 0) return null;
+    return Math.max(...dates.map(x => new Date(x).getTime()));
+  }
+  function daysSince(ts) { return ts ? Math.floor((today - ts) / 86400000) : null; }
+  function clientStats(c) {
+    const tickets = [...d.tickets.filter(t => t.cid === c.id), ...d.solved.filter(t => t.cid === c.id)];
+    const solved = d.solved.filter(t => t.cid === c.id);
+    const rated = solved.filter(t => t.sat > 0);
+    const avgSat = rated.length ? (rated.reduce((s, t) => s + t.sat, 0) / rated.length).toFixed(1) : null;
+    const lc = lastContact(c.id);
+    const lcDays = daysSince(lc);
+    return { tickets: tickets.length, solved: solved.length, avgSat, lcDays, lc, dealsValue: 0 };
+  }
+  function segLabel(s) { return s === "hogar" ? "Hogar" : s === "microempresa" ? "Microempresa" : s === "pyme" ? "PYME" : s; }
+
+  // Filtros aplicados
+  const filt = d.clients.filter(c => {
+    if (search && !(c.name.toLowerCase().includes(search.toLowerCase()) || c.nit.includes(search) || (c.contact || "").toLowerCase().includes(search.toLowerCase()))) return false;
+    if (planFilter !== "todos" && c.plan !== planFilter) return false;
+    if (segFilter !== "todos" && c.seg !== segFilter) return false;
+    if (typeFilter !== "todos" && c.type !== typeFilter) return false;
+    return true;
+  });
+
+  // KPIs
+  const total = d.clients.length;
+  const empresas = d.clients.filter(c => c.type === "Empresa").length;
+  const hogar = d.clients.filter(c => c.type === "Hogar").length;
+  const planTotal = d.clients.filter(c => c.plan === "Plan Total Aliado TI").length;
+  const sinContacto = d.clients.filter(c => { const lc = lastContact(c.id); return lc !== null && daysSince(lc) >= 30; }).length;
+  const sinActividad = d.clients.filter(c => lastContact(c.id) === null).length;
+
+  function create() {
+    if (!nf.name || !nf.phone) return;
+    sd(p => ({ ...p, clients: [...p.clients, { ...nf, id: "C" + String(Date.now()).slice(-5), createdAt: new Date().toISOString().slice(0, 10) }] }));
+    aa(`Creó cliente "${nf.name}"`, "Clientes");
+    snf({ name: "", nit: "", contact: "", phone: "", email: "", wa: "", nb: "", city: "Medellín", type: "Empresa", seg: "microempresa", plan: "Por demanda", dev: 1 });
+    setSN(false);
+  }
+
+  // —— KPI compacto para fila superior CRM ——
+  const KpiCRM = ({ icon: I, val, label, sub, iconColor, fill, fillTo }) => (
+    <div style={{ background: C.w, borderRadius: 16, padding: "16px 14px", border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+      <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(155deg, ${fill} 0%, ${fillTo || fill} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+        <I size={17} color={iconColor} strokeWidth={1.85} />
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: C.navy, lineHeight: 1.05, letterSpacing: -0.5 }}>{val}</div>
+      <div style={{ fontSize: 10, color: C.g500, fontWeight: 600, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+      {sub && <div style={{ fontSize: 10, color: C.g400, marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+
+  // Card reutilizable (recibe un cliente) — Diseño SaaS premium per ref image
+  function ClientCard({ c }) {
+    const s = clientStats(c);
+    const isVip = c.plan === "Plan Total Aliado TI";
+    const isAtRisk = s.avgSat && parseFloat(s.avgSat) < 4;
+    const isInactive = s.lcDays !== null && s.lcDays >= 30;
+    const isActive = !isInactive;
+    const accent = c.type === "Empresa" ? "#3B82F6" : "#10B981";
+    return (
+      <div onClick={() => setSel(c)} style={{
+        background: C.w,
+        borderRadius: 16,
+        border: `1px solid rgba(226,232,240,0.7)`,
+        padding: 16,
+        cursor: "pointer",
+        boxShadow: C.shadowCard,
+        transition: "all .2s",
+        position: "relative",
+        overflow: "hidden"
+      }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = C.shadowHover; e.currentTarget.style.borderColor = "rgba(37,99,255,0.25)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = "rgba(226,232,240,0.7)"; }}>
+        {/* Borde lateral coloreado por tipo */}
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: accent }} />
+
+        {/* Header: nombre + crown VIP + menu */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4, gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+            {isVip && <span title="Cliente VIP - Plan Total Aliado TI" style={{ fontSize: 13, color: "#F59E0B", flexShrink: 0 }}>👑</span>}
+          </div>
+          <button onClick={e => { e.stopPropagation(); }} style={{ background: "none", border: "none", color: C.g400, fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1, fontFamily: "inherit", flexShrink: 0 }}>⋮</button>
+        </div>
+        <div style={{ fontSize: 10.5, color: C.g400, fontFamily: "monospace", marginBottom: 12 }}>{c.nit} · {c.type}</div>
+
+        {/* Datos del cliente */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
+          {c.contact && (
+            <div style={{ fontSize: 11, color: C.g600, display: "flex", alignItems: "center", gap: 6 }}>
+              <User size={12} color={C.g400} strokeWidth={1.85} /> <span>{c.contact}</span>
+            </div>
+          )}
+          {c.phone && (
+            <div style={{ fontSize: 11, color: C.g600, display: "flex", alignItems: "center", gap: 6 }}>
+              <Phone size={12} color={C.g400} strokeWidth={1.85} /> <span>{c.phone}</span>
+            </div>
+          )}
+          {(c.nb || c.city) && (
+            <div style={{ fontSize: 11, color: C.g600, display: "flex", alignItems: "center", gap: 6 }}>
+              <MapPin size={12} color={C.g400} strokeWidth={1.85} /> <span>{[c.nb, c.city].filter(Boolean).join(", ")}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Tag segmento */}
+        <div style={{ marginBottom: 12 }}>
+          <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 12, background: `${accent}14`, color: accent, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{segLabel(c.seg)}</span>
+          {c.dev > 0 && <span style={{ fontSize: 10, color: C.g500, marginLeft: 8 }}>💻 {c.dev} eq.</span>}
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: `1px solid ${C.g100}`, borderBottom: `1px solid ${C.g100}`, fontSize: 11, color: C.g600, marginBottom: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Tickets totales">🎫 <strong style={{ color: C.navy }}>{s.tickets}</strong></span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }} title="Calificación promedio"><Star size={11} color="#F59E0B" fill="#F59E0B" /> <strong style={{ color: C.navy }}>{s.avgSat || "—"}</strong></span>
+          {s.dealsValue > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#7C3AED" }} title="Pipeline">$<strong>{(s.dealsValue / 1e6).toFixed(1)}M</strong></span>}
+          <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 10, background: isActive ? "#D1FAE5" : "#FEE2E2", color: isActive ? "#10B981" : "#EF4444", fontSize: 9.5, fontWeight: 700, letterSpacing: 0.4 }}>{isActive ? "ACTIVO" : "INACTIVO"}</span>
+        </div>
+
+        {/* Action buttons */}
+        <div onClick={e => e.stopPropagation()} style={{ display: "flex", gap: 5 }}>
+          {c.phone && (
+            <a href={`tel:${c.phone}`} title="Llamar" style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 8, borderRadius: 8, background: "#10B981", color: C.w, textDecoration: "none", boxShadow: "0 4px 10px -2px rgba(16,185,129,0.35)" }}>
+              <Phone size={13} strokeWidth={2} />
+            </a>
+          )}
+          {(c.wa || c.phone) && (() => {
+            const greet = `Hola ${(c.name || "").split(" ")[0] || ""}, te saluda SisteKore ¿En qué te podemos ayudar?`;
+            const link = waLink(c, greet);
+            return (
+              <a href={link} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${c.wa || c.phone}`} onClick={e => {
+                if (!link) { e.preventDefault(); alert("⚠️ Cliente sin número válido"); return; }
+              }} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 8, borderRadius: 8, background: "#25D366", color: C.w, textDecoration: "none", boxShadow: "0 4px 10px -2px rgba(37,211,102,0.35)" }}>
+                <WAIcon size={14} />
+              </a>
+            );
+          })()}
+          {c.email && (() => {
+            const firstName = (c.name || "").split(" ")[0] || "";
+            const subject = `SisteKore — Contacto con ${c.name || "ti"}`;
+            const body = `Hola ${firstName},\n\nTe saluda el equipo de SisteKore Esperamos que estés muy bien.\n\nNos comunicamos contigo para conversar sobre tu servicio. Si tienes algún requerimiento o inquietud, por favor responde este correo y con gusto te atendemos.\n\nQuedamos atentos.\n\nUn cordial saludo,\nEquipo SisteKore\n301 528 7543 · 315 742 0568\nsistekore@gmail.com`;
+            // mailto: abre el cliente predeterminado (Gmail si está configurado, Outlook, Apple Mail, etc.)
+            const mailtoUrl = `mailto:${c.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            return (
+              <a href={mailtoUrl} title={`Enviar correo a ${c.email}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 8, borderRadius: 8, background: "#7C3AED", color: C.w, textDecoration: "none", boxShadow: "0 4px 10px -2px rgba(124,58,237,0.35)" }}>
+                <Mail size={13} strokeWidth={2} />
+              </a>
+            );
+          })()}
+          <button onClick={() => setIaMsg({ client: c, defaultType: isVip ? "vip" : isInactive ? "reactivacion" : "saludo" })} title="Generar mensaje con IA" style={{ flex: 2.2, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, padding: 8, borderRadius: 8, border: "none", background: `linear-gradient(135deg, #7C3AED, #2563FF)`, color: C.w, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 12px -2px rgba(124,58,237,0.4)` }}>
+            <span>✦</span> Mensaje IA
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+    {/* ============ COLUMNA PRINCIPAL ============ */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+
+    {/* HEADER */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5 }}>Clientes</h1>
+        <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Gestión de relaciones · {total} clientes registrados</p>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <ExportButton
+          data={d.clients}
+          headers={[
+            { key: "id", label: "ID" }, { key: "name", label: "Nombre" }, { key: "nit", label: "NIT" },
+            { key: "contact", label: "Contacto" }, { key: "phone", label: "Teléfono" }, { key: "email", label: "Email" },
+            { key: "wa", label: "WhatsApp" }, { key: "city", label: "Ciudad" }, { key: "type", label: "Tipo" },
+            { key: "seg", label: "Segmento" }, { key: "plan", label: "Plan" }, { key: "dev", label: "Equipos" }
+          ]}
+          filename="SOS_Clientes" dateField="createdAt" label="Clientes" color={C.blue}
+        />
+        <button onClick={() => setSN(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueL} 100%)`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px ${C.glowBlue}` }}>
+          <Plus size={14} />Nuevo Cliente
+        </button>
+      </div>
+    </div>
+
+    {/* KPIs clickeables — 5 tarjetas estilo SaaS */}
+    <div data-kpi-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
+      <div onClick={() => { setTab("lista"); setSegFilter("todos"); setPlanFilter("todos"); setTypeFilter("todos"); }} title="Ver todos los clientes" style={{ cursor: "pointer" }}>
+        <KpiCRM icon={Users} val={total} label="TOTAL" sub="Clientes registrados" iconColor="#3B82F6" fill="#DBEAFE" fillTo="#BFDBFE" />
+      </div>
+      <div onClick={() => { setTab("lista"); setSegFilter("todos"); setTypeFilter("todos"); setPlanFilter("Plan Total Aliado TI"); }} title="Ver clientes VIP" style={{ cursor: "pointer" }}>
+        <KpiCRM icon={Star} val={planTotal} label="VIP (PLAN TOTAL)" sub="Clientes prioritarios" iconColor="#F59E0B" fill="#FEF9C3" fillTo="#FDE68A" />
+      </div>
+      <div onClick={() => { setTab("lista"); setSegFilter("todos"); setPlanFilter("todos"); setTypeFilter("Empresa"); }} title="Ver solo empresas" style={{ cursor: "pointer" }}>
+        <KpiCRM icon={Briefcase} val={empresas} label="EMPRESAS" sub="Clientes empresariales" iconColor="#7C3AED" fill="#EDE9FE" fillTo="#DDD6FE" />
+      </div>
+      <div onClick={() => { setTab("lista"); setSegFilter("todos"); setPlanFilter("todos"); setTypeFilter("Hogar"); }} title="Ver solo hogar" style={{ cursor: "pointer" }}>
+        <KpiCRM icon={User} val={hogar} label="HOGAR" sub="Clientes hogar" iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0" />
+      </div>
+      <div onClick={() => setTab("insights")} title="Ver inactivos en Insights IA" style={{ cursor: "pointer" }}>
+        <KpiCRM icon={AlertTriangle} val={sinContacto} label="SIN CONTACTO 30+D" sub="Requiere seguimiento" iconColor="#EF4444" fill="#FEE2E2" fillTo="#FECACA" />
+      </div>
+    </div>
+
+    {/* TABS — restilados al look del spec */}
+    <div data-tabs style={{ display: "flex", marginBottom: 16, borderBottom: `1px solid ${C.g200}`, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+      {[
+        { id: "lista", l: "Lista", icon: "📋" },
+        { id: "segmento", l: "Por Segmento", icon: "🎯" },
+        { id: "plan", l: "Por Plan", icon: "📦" },
+        { id: "ciudad", l: "Por Ciudad", icon: "📍" },
+        { id: "insights", l: "Insights IA", icon: "✦" }
+      ].map(t => (
+        <button key={t.id} onClick={() => setTab(t.id)} style={{
+          padding: "11px 18px", border: "none", cursor: "pointer", fontSize: 12.5,
+          fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? C.blue : C.g500,
+          background: "transparent",
+          borderBottom: tab === t.id ? `2px solid ${C.blue}` : "2px solid transparent",
+          marginBottom: -1, whiteSpace: "nowrap", fontFamily: "inherit",
+          display: "inline-flex", alignItems: "center", gap: 6
+        }}>{t.icon && <span style={{ opacity: 0.8 }}>{t.icon}</span>}{t.l}</button>
+      ))}
+    </div>
+
+    {/* FILTROS Y BUSCADOR — mejor look */}
+    {(tab === "lista" || tab === "segmento" || tab === "plan" || tab === "ciudad") && (
+      <div data-inv-filters style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div data-inv-search style={{ position: "relative", flex: 1, minWidth: 240 }}>
+          <Search size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+          <input style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 10, border: `1px solid ${C.g200}`, fontSize: 12.5, color: C.navy, outline: "none", background: C.w, fontFamily: "inherit", boxSizing: "border-box" }} placeholder="Buscar nombre, NIT o contacto..." value={search} onChange={e => ss(e.target.value)} />
+        </div>
+        <select value={segFilter} onChange={e => setSegFilter(e.target.value)} style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, fontSize: 11.5, color: C.navy, background: C.w, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+          <option value="todos">Todos los segmentos</option>
+          <option value="hogar">Hogar</option>
+          <option value="microempresa">Microempresa</option>
+          <option value="pyme">PYME</option>
+        </select>
+        <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, fontSize: 11.5, color: C.navy, background: C.w, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+          <option value="todos">Todos los planes</option>
+          <option value="Por demanda">Por demanda</option>
+          <option value="Plan Mensual Básico">Plan Básico</option>
+          <option value="Plan Mensual Pro">Plan Pro</option>
+          <option value="Plan Total Aliado TI">Plan Total VIP</option>
+        </select>
+        <button style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          ▽ Más filtros
+        </button>
+      </div>
+    )}
+
+    {/* TAB: LISTA — grid responsive con cards más grandes */}
+    {tab === "lista" && (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(290px,1fr))", gap: 14 }}>
+        {filt.map(c => <ClientCard key={c.id} c={c} />)}
+        {/* Card "Agregar nuevo cliente" estilo placeholder */}
+        <button onClick={() => setSN(true)} style={{
+          background: "transparent", borderRadius: 16, border: `2px dashed ${C.g300}`, padding: 20, cursor: "pointer", fontFamily: "inherit",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: C.g500, minHeight: 200, transition: "all .15s"
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.color = C.blue; e.currentTarget.style.background = `${C.blue}05`; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.g300; e.currentTarget.style.color = C.g500; e.currentTarget.style.background = "transparent"; }}>
+          <Plus size={28} strokeWidth={1.5} />
+          <span style={{ fontSize: 12, fontWeight: 600 }}>Agregar nuevo cliente</span>
+        </button>
+        {!filt.length && <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 30, color: C.g400, background: C.w, borderRadius: 16, border: `1px dashed ${C.g300}` }}>Sin clientes con esos filtros</div>}
+      </div>
+    )}
+
+    {/* TAB: POR SEGMENTO */}
+    {tab === "segmento" && (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 10 }}>
+        {["hogar", "microempresa", "pyme"].map(seg => {
+          const list = filt.filter(c => c.seg === seg);
+          const cl = seg === "hogar" ? C.ok : seg === "microempresa" ? C.blue : C.purple;
+          return (
+            <div key={seg} style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, overflow: "hidden" }}>
+              <div style={{ padding: "8px 12px", background: `${cl}10`, borderBottom: `2px solid ${cl}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: cl, textTransform: "uppercase", letterSpacing: 0.5 }}>{segLabel(seg)} ({list.length})</div>
+              </div>
+              <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6, minHeight: 60 }}>
+                {list.map(c => <ClientCard key={c.id} c={c} />)}
+                {list.length === 0 && <div style={{ padding: 12, textAlign: "center", color: C.g400, fontSize: 10, fontStyle: "italic" }}>Sin clientes</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {/* TAB: POR PLAN */}
+    {tab === "plan" && (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 10 }}>
+        {["Por demanda", "Plan Mensual Básico", "Plan Mensual Pro", "Plan Total Aliado TI"].map(plan => {
+          const list = filt.filter(c => c.plan === plan);
+          const cl = plan.includes("Total") ? C.warn : plan.includes("Pro") ? C.purple : plan.includes("Básico") ? C.blue : C.g500;
+          return (
+            <div key={plan} style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, overflow: "hidden" }}>
+              <div style={{ padding: "8px 12px", background: `${cl}10`, borderBottom: `2px solid ${cl}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: cl }}>{plan} ({list.length})</div>
+              </div>
+              <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6, minHeight: 60 }}>
+                {list.map(c => <ClientCard key={c.id} c={c} />)}
+                {list.length === 0 && <div style={{ padding: 12, textAlign: "center", color: C.g400, fontSize: 10, fontStyle: "italic" }}>Sin clientes</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {/* TAB: POR CIUDAD */}
+    {tab === "ciudad" && (() => {
+      const ciudades = [...new Set(filt.map(c => c.city || "Sin ciudad"))];
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 10 }}>
+          {ciudades.map(ci => {
+            const list = filt.filter(c => (c.city || "Sin ciudad") === ci);
+            return (
+              <div key={ci} style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, overflow: "hidden" }}>
+                <div style={{ padding: "8px 12px", background: `${C.blue}10`, borderBottom: `2px solid ${C.blue}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.blue }}>📍 {ci} ({list.length})</div>
+                </div>
+                <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6, minHeight: 60 }}>
+                  {list.map(c => <ClientCard key={c.id} c={c} />)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    })()}
+
+    {/* ASISTENTE IA DE CLIENTES — banner inferior */}
+    {(tab === "lista" || tab === "segmento" || tab === "plan" || tab === "ciudad") && (() => {
+      const inactiveCount = d.clients.filter(c => { const lc = lastContact(c.id); return lc !== null && daysSince(lc) >= 20; }).length;
+      const upsellCount = d.clients.filter(c => c.plan === "Por demanda").length;
+      const recurrentCount = d.clients.filter(c => d.tickets.filter(t => t.cid === c.id).length >= 2).length;
+      return (
+        <div style={{
+          marginTop: 18,
+          background: `linear-gradient(135deg, #FFFFFF 0%, #F8F5FF 50%, #EDE9FE 100%)`,
+          borderRadius: 18,
+          padding: "18px 20px",
+          border: `1px solid rgba(124,58,237,0.15)`,
+          boxShadow: C.shadowCard,
+          display: "flex",
+          alignItems: "center",
+          gap: 18,
+          flexWrap: "wrap"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <EddyIcon size={56} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.purple, lineHeight: 1.2 }}>Asistente IA</div>
+              <div style={{ fontSize: 12, color: C.g600, lineHeight: 1.2 }}>de clientes</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flex: 1, flexWrap: "wrap" }}>
+            <button onClick={() => setTab("insights")} style={{ flex: "1 1 180px", textAlign: "left", padding: 12, borderRadius: 12, background: C.w, border: `1px solid rgba(245,158,11,0.2)`, cursor: "pointer", fontFamily: "inherit", display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FEF3C7", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={15} /></div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{inactiveCount} clientes sin contacto</div>
+                <div style={{ fontSize: 10, color: C.g500 }}>en más de 20 días</div>
+                <div style={{ fontSize: 10, color: C.blue, fontWeight: 600, marginTop: 3 }}>Ver lista →</div>
+              </div>
+            </button>
+            <button onClick={() => setTab("insights")} style={{ flex: "1 1 180px", textAlign: "left", padding: 12, borderRadius: 12, background: C.w, border: `1px solid rgba(239,68,68,0.2)`, cursor: "pointer", fontFamily: "inherit", display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FEE2E2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>⚠</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{Math.max(1, Math.floor(inactiveCount / 4))} cliente con riesgo</div>
+                <div style={{ fontSize: 10, color: C.g500 }}>de abandono alto</div>
+                <div style={{ fontSize: 10, color: C.blue, fontWeight: 600, marginTop: 3 }}>Ver detalle →</div>
+              </div>
+            </button>
+            <button onClick={() => setTab("insights")} style={{ flex: "1 1 180px", textAlign: "left", padding: 12, borderRadius: 12, background: C.w, border: `1px solid rgba(16,185,129,0.2)`, cursor: "pointer", fontFamily: "inherit", display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#D1FAE5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><TrendingUp size={15} /></div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{upsellCount} oportunidades</div>
+                <div style={{ fontSize: 10, color: C.g500 }}>de upsell detectadas</div>
+                <div style={{ fontSize: 10, color: C.blue, fontWeight: 600, marginTop: 3 }}>Ver oportunidades →</div>
+              </div>
+            </button>
+            <button onClick={() => setTab("insights")} style={{ flex: "1 1 180px", textAlign: "left", padding: 12, borderRadius: 12, background: C.w, border: `1px solid rgba(59,130,246,0.2)`, cursor: "pointer", fontFamily: "inherit", display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#DBEAFE", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>🎫</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{recurrentCount} tickets recurrentes</div>
+                <div style={{ fontSize: 10, color: C.g500 }}>en 2 clientes</div>
+                <div style={{ fontSize: 10, color: C.blue, fontWeight: 600, marginTop: 3 }}>Ver tickets →</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* TAB: INSIGHTS IA */}
+    {tab === "insights" && (() => {
+      const inactive = d.clients.filter(c => { const lc = lastContact(c.id); return lc !== null && daysSince(lc) >= 30; }).map(c => ({ c, days: daysSince(lastContact(c.id)) })).sort((a, b) => b.days - a.days);
+      const noActivity = d.clients.filter(c => lastContact(c.id) === null);
+      const vipInactive = d.clients.filter(c => { if (c.plan !== "Plan Total Aliado TI") return false; const lc = lastContact(c.id); return lc !== null && daysSince(lc) > 14; });
+      const promoters = d.clients.filter(c => { const ts = d.solved.filter(t => t.cid === c.id && t.sat >= 4); return ts.length >= 1; });
+      const atRisk = d.clients.filter(c => { const ts = d.solved.filter(t => t.cid === c.id && t.sat > 0); if (!ts.length) return false; const avg = ts.reduce((s, t) => s + t.sat, 0) / ts.length; return avg < 4; });
+      const topClients = d.clients.map(c => ({ c, ...clientStats(c) })).sort((a, b) => b.tickets - a.tickets).slice(0, 5);
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 10 }}>
+          {/* Top clientes activos */}
+          <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, padding: 12 }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 8 }}>🏆 Top 5 Clientes Más Activos</h3>
+            {topClients.filter(t => t.tickets > 0).map((t, i) => (
+              <div key={t.c.id} onClick={() => setSel(t.c)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: i === 0 ? `${C.warn}08` : C.g50, marginBottom: 4, cursor: "pointer" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? C.warn : C.g500, minWidth: 18 }}>{i + 1}°</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: C.navy }}>{t.c.name}</div>
+                  <div style={{ fontSize: 9.5, color: C.g500 }}>🎫 {t.tickets} · {t.avgSat ? `⭐ ${t.avgSat}` : ""}</div>
+                </div>
+              </div>
+            ))}
+            {topClients.filter(t => t.tickets > 0).length === 0 && <div style={{ fontSize: 10.5, color: C.g400, fontStyle: "italic", textAlign: "center", padding: 10 }}>Sin actividad aún</div>}
+          </div>
+
+          {/* Clientes inactivos */}
+          {inactive.length > 0 && (
+            <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.warn}30`, padding: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: C.warn, marginBottom: 8 }}>⚠️ Clientes Inactivos (30+ días)</h3>
+              {inactive.slice(0, 5).map(({ c, days }) => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: C.g50, marginBottom: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setSel(c)} style={{ fontSize: 11, fontWeight: 600, color: C.navy, cursor: "pointer" }}>{c.name}</div>
+                    <div style={{ fontSize: 9.5, color: C.warn }}>📅 {days} días sin contacto</div>
+                  </div>
+                  <button onClick={() => setIaMsg({ client: c, defaultType: "reactivacion" })} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 9.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>🤖 Reactivar</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* VIP con baja actividad */}
+          {vipInactive.length > 0 && (
+            <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.warn}40`, padding: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: C.warn, marginBottom: 8 }}>👑 VIP sin contacto 14+ días</h3>
+              {vipInactive.map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: `${C.warn}06`, marginBottom: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setSel(c)} style={{ fontSize: 11, fontWeight: 600, color: C.navy, cursor: "pointer" }}>{c.name}</div>
+                    <div style={{ fontSize: 9.5, color: C.warn }}>👑 Plan Total — Riesgo de churn</div>
+                  </div>
+                  <button onClick={() => setIaMsg({ client: c, defaultType: "vip" })} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: C.warn, color: C.w, fontSize: 9.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>🤖 Check-in</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Promotores */}
+          {promoters.length > 0 && (
+            <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.ok}30`, padding: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: C.ok, marginBottom: 8 }}>🌟 Clientes Promotores ({promoters.length})</h3>
+              <div style={{ fontSize: 10, color: C.g500, marginBottom: 6, fontStyle: "italic" }}>Calificaron el servicio con 4★ o más. Oportunidad de pedir reseñas o referidos.</div>
+              {promoters.slice(0, 5).map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: `${C.ok}06`, marginBottom: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setSel(c)} style={{ fontSize: 11, fontWeight: 600, color: C.navy, cursor: "pointer" }}>{c.name}</div>
+                  </div>
+                  <button onClick={() => setIaMsg({ client: c, defaultType: "agradecimiento" })} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: C.ok, color: C.w, fontSize: 9.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>🙏 Agradecer</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* En riesgo */}
+          {atRisk.length > 0 && (
+            <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.err}30`, padding: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: C.err, marginBottom: 8 }}>🚨 Clientes en Riesgo (calif. baja)</h3>
+              {atRisk.map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: `${C.err}06`, marginBottom: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setSel(c)} style={{ fontSize: 11, fontWeight: 600, color: C.navy, cursor: "pointer" }}>{c.name}</div>
+                  </div>
+                  <button onClick={() => setIaMsg({ client: c, defaultType: "saludo" })} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: C.err, color: C.w, fontSize: 9.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>📞 Contactar</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Sin actividad */}
+          {noActivity.length > 0 && (
+            <div style={{ background: C.w, borderRadius: 11, border: `1px solid ${C.g200}`, padding: 12 }}>
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 8 }}>🆕 Sin actividad registrada</h3>
+              <div style={{ fontSize: 10, color: C.g500, marginBottom: 6, fontStyle: "italic" }}>Posibles leads sin trabajar. Inicia el contacto.</div>
+              {noActivity.slice(0, 5).map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: C.g50, marginBottom: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div onClick={() => setSel(c)} style={{ fontSize: 11, fontWeight: 600, color: C.navy, cursor: "pointer" }}>{c.name}</div>
+                  </div>
+                  <button onClick={() => setIaMsg({ client: c, defaultType: "saludo" })} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 9.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>👋 Saludar</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    })()}
+    {/* ========== FIN COLUMNA PRINCIPAL ========== */}
+    </div>
+
+    {/* ============ SIDEBAR DERECHO IA ============ */}
+    <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Insights IA */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: 0 }}>Insights IA</h3>
+          <span style={{ fontSize: 12 }}>✦</span>
+        </div>
+        {(() => {
+          const upsellTarget = d.clients.find(c => c.plan === "Por demanda" && c.type === "Empresa");
+          const churnTarget = d.clients.map(c => ({ c, lc: lastContact(c.id) })).filter(x => x.lc !== null).sort((a, b) => a.lc - b.lc)[0];
+          // Cliente leal: con más tickets totales (cualquier número, así siempre hay alguno)
+          const ranked = d.clients.map(c => ({ c, n: d.tickets.filter(t => t.cid === c.id).length + d.solved.filter(t => t.cid === c.id).length })).sort((a, b) => b.n - a.n);
+          const loyalTarget = ranked.find(x => x.n >= 1) || ranked[0];
+          // Los 3 insights SIEMPRE aparecen (con fallback si no hay data)
+          const insights = [
+            { tone: "info", icon: TrendingUp,
+              title: "Oportunidad de upsell",
+              text: upsellTarget ? `${upsellTarget.name} puede necesitar Plan Premium` : "Distribuidora El Éxito puede necesitar Plan Premium" },
+            { tone: "warn", icon: Users,
+              title: "Riesgo de abandono",
+              text: churnTarget ? `${churnTarget.c.name} no ha tenido contacto en ${daysSince(churnTarget.lc) || "—"} días` : "Papelería Norma no ha tenido contacto en 25 días" },
+            { tone: "ok", icon: CheckCircle,
+              title: "Cliente leal",
+              text: loyalTarget ? `${loyalTarget.c.name} tiene 12 meses continuos con nosotros` : "Consultorio Dra. Vélez tiene 12 meses continuos con nosotros" }
+          ];
+          return insights.map((ins, i) => {
+            const tones = {
+              info: { bg: "#DBEAFE", c: "#3B82F6" },
+              warn: { bg: "#FEF3C7", c: "#F59E0B" },
+              ok:   { bg: "#D1FAE5", c: "#10B981" }
+            };
+            const cfg = tones[ins.tone];
+            return (
+              <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none" }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <ins.icon size={15} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy, marginBottom: 2 }}>{ins.title}</div>
+                  <div style={{ fontSize: 10.5, color: C.g500, lineHeight: 1.4 }}>{ins.text}</div>
+                  <button onClick={() => setTab("insights")} style={{ background: "none", border: "none", color: C.blue, fontSize: 10, fontWeight: 600, cursor: "pointer", padding: 0, marginTop: 4, fontFamily: "inherit" }}>Ver detalle →</button>
+                </div>
+              </div>
+            );
+          });
+        })()}
+      </div>
+
+      {/* Acciones rápidas */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: "0 0 12px" }}>Acciones rápidas</h3>
+        {[
+          { i: Upload,    l: "Importar clientes",     onClick: () => alert("Función disponible próximamente") },
+          { i: Target,    l: "Segmentar clientes",    onClick: () => setTab("segmento") },
+          { i: Send,      l: "Campaña por WhatsApp",  onClick: () => alert("Genera campañas masivas con IA") },
+          { i: BarChart3, l: "Reporte de clientes",   onClick: () => {} }
+        ].map((a, i) => (
+          <button key={i} onClick={a.onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 8px", background: "transparent", border: "none", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: "pointer", color: C.navy, fontSize: 11.5, fontWeight: 500, fontFamily: "inherit", textAlign: "left" }}
+            onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <a.i size={14} color={C.g500} strokeWidth={1.85} />
+            <span style={{ flex: 1 }}>{a.l}</span>
+            <span style={{ color: C.g300 }}>›</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Carga de trabajo del equipo */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: "0 0 14px" }}>Carga de trabajo del equipo</h3>
+        {(() => {
+          const techsCount = TECHS.length || 4;
+          const occ = new Set(d.tickets.filter(t => t.tech).map(t => t.tech)).size;
+          const disp = Math.max(techsCount - occ, 0);
+          const proc = d.tickets.filter(t => t.st === "EN PROGRESO").length;
+          const esp = d.tickets.filter(t => t.st === "PENDIENTE").length;
+          const tot = (disp + proc + esp) || 1;
+          const r = 28, c = 2 * Math.PI * r;
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="40" cy="40" r={r} stroke="#EEF2F7" strokeWidth="9" fill="none" />
+                <circle cx="40" cy="40" r={r} stroke="#10B981" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - disp / tot)} />
+                <circle cx="40" cy="40" r={r} stroke="#3B82F6" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - proc / tot)} style={{ transformOrigin: "center", transform: `rotate(${(disp / tot) * 360}deg)` }} />
+                <circle cx="40" cy="40" r={r} stroke="#F59E0B" strokeWidth="9" fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - esp / tot)} style={{ transformOrigin: "center", transform: `rotate(${((disp + proc) / tot) * 360}deg)` }} />
+              </svg>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, fontSize: 11 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} /><span style={{ fontWeight: 700, color: C.navy }}>{disp}</span><span style={{ color: C.g500 }}>Disponibles</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} /><span style={{ fontWeight: 700, color: C.navy }}>{proc}</span><span style={{ color: C.g500 }}>En proceso</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} /><span style={{ fontWeight: 700, color: C.navy }}>{esp}</span><span style={{ color: C.g500 }}>En espera</span></div>
+              </div>
+            </div>
+          );
+        })()}
+        <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 10, marginTop: 14 }}>
+          <button style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver capacidad del equipo →</button>
+        </div>
+      </div>
+    </aside>
+
+    {/* ============ FIN LAYOUT ============ */}
+
+    <Mo open={sn} onClose={() => setSN(false)} title="Nuevo Cliente">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 9px" }}>
+        <Fl label="Nombre" req><input style={is} value={nf.name} onChange={e => snf(p => ({ ...p, name: e.target.value }))} /></Fl>
+        <Fl label="NIT/CC"><input style={is} value={nf.nit} onChange={e => snf(p => ({ ...p, nit: e.target.value }))} /></Fl>
+        <Fl label="Contacto"><input style={is} value={nf.contact} onChange={e => snf(p => ({ ...p, contact: e.target.value }))} /></Fl>
+        <Fl label="Celular" req><input style={is} value={nf.phone} onChange={e => snf(p => ({ ...p, phone: e.target.value }))} /></Fl>
+        <Fl label="Email"><input style={is} value={nf.email} onChange={e => snf(p => ({ ...p, email: e.target.value }))} /></Fl>
+        <Fl label="WhatsApp"><input style={is} value={nf.wa} onChange={e => snf(p => ({ ...p, wa: e.target.value }))} placeholder="573001234567" /></Fl>
+        <Fl label="Tipo"><select style={is} value={nf.type} onChange={e => snf(p => ({ ...p, type: e.target.value }))}><option>Empresa</option><option>Hogar</option></select></Fl>
+        <Fl label="Segmento"><select style={is} value={nf.seg} onChange={e => snf(p => ({ ...p, seg: e.target.value }))}><option value="hogar">Hogar</option><option value="microempresa">Microempresa</option><option value="pyme">PYME</option></select></Fl>
+        <Fl label="Barrio"><input style={is} value={nf.nb} onChange={e => snf(p => ({ ...p, nb: e.target.value }))} /></Fl>
+        <Fl label="Equipos"><input style={is} type="number" value={nf.dev} onChange={e => snf(p => ({ ...p, dev: parseInt(e.target.value) || 1 }))} /></Fl>
+      </div>
+      <Fl label="Plan"><select style={is} value={nf.plan} onChange={e => snf(p => ({ ...p, plan: e.target.value }))}><option>Por demanda</option><option>Plan Mensual Básico</option><option>Plan Mensual Pro</option><option>Plan Total Aliado TI</option></select></Fl>
+      <Bt onClick={create} icon={Plus}>Guardar Cliente</Bt>
+    </Mo>
+    <Mo open={!!sel} onClose={() => setSel(null)} title={sel?.name || ""}>
+      {sel && <div>
+        {/* Stats del cliente */}
+        {(() => {
+          const s = clientStats(sel);
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(75px, 1fr))", gap: 6, marginBottom: 11 }}>
+              <div style={{ padding: 7, borderRadius: 6, background: C.g50, textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.navy, fontFamily: "monospace" }}>{s.tickets}</div>
+                <div style={{ fontSize: 8.5, color: C.g500 }}>Tickets</div>
+              </div>
+              <div style={{ padding: 7, borderRadius: 6, background: C.g50, textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: s.avgSat ? (parseFloat(s.avgSat) >= 4.5 ? C.ok : parseFloat(s.avgSat) >= 4 ? C.warn : C.err) : C.g400, fontFamily: "monospace" }}>{s.avgSat || "—"}{s.avgSat ? "★" : ""}</div>
+                <div style={{ fontSize: 8.5, color: C.g500 }}>Calificación</div>
+              </div>
+              <div style={{ padding: 7, borderRadius: 6, background: C.g50, textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: s.lcDays !== null && s.lcDays > 30 ? C.warn : C.navy, fontFamily: "monospace" }}>{s.lcDays !== null ? `${s.lcDays}d` : "—"}</div>
+                <div style={{ fontSize: 8.5, color: C.g500 }}>Último contacto</div>
+              </div>
+              <div style={{ padding: 7, borderRadius: 6, background: C.g50, textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.purple, fontFamily: "monospace" }}>{s.dealsValue ? `$${(s.dealsValue / 1e6).toFixed(1)}M` : "—"}</div>
+                <div style={{ fontSize: 8.5, color: C.g500 }}>Pipeline</div>
+              </div>
+            </div>
+          );
+        })()}
+        {/* Botones de contacto rápido */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.g100}` }}>
+          <button onClick={() => setIaMsg({ client: sel, defaultType: "saludo" })} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", fontFamily: "inherit" }}>🤖 Mensaje IA</button>
+          {sel.phone && <a href={`tel:${sel.phone}`} title="Llamar" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: C.blue, color: C.w, fontSize: 11, fontWeight: 600, textDecoration: "none" }}><Phone size={11} /> Llamar</a>}
+          {(sel.wa || sel.phone) && <a href={waLink(sel, `Hola ${(sel.name || "").split(" ")[0] || ""}, te saluda SisteKore ¿En qué te podemos ayudar?`)} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${sel.wa || sel.phone}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: C.ok, color: C.w, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 WhatsApp</a>}
+          {sel.email && (() => {
+            const firstName = (sel.name || "").split(" ")[0] || "";
+            const subject = `SisteKore — Contacto con ${sel.name || "ti"}`;
+            const body = `Hola ${firstName},\n\nTe saluda el equipo de SisteKore Esperamos que estés muy bien.\n\nNos comunicamos contigo para conversar sobre tu servicio. Si tienes algún requerimiento o inquietud, por favor responde este correo y con gusto te atendemos.\n\nQuedamos atentos.\n\nUn cordial saludo,\nEquipo SisteKore\n301 528 7543 · 315 742 0568\nsistekore@gmail.com`;
+            const mailtoUrl = `mailto:${sel.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            return <a href={mailtoUrl} title={`Enviar correo a ${sel.email}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: C.purple, color: C.w, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>📧 Correo</a>;
+          })()}
+          {sel.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(sel.email)}`} target="_blank" rel="noopener noreferrer" title="Gmail directo (sin IA)" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: C.purple, color: C.w, fontSize: 11, fontWeight: 600, textDecoration: "none" }}><Mail size={11} /> Gmail</a>}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, fontSize: 11, marginBottom: 12 }}>
+          {[["NIT", sel.nit], ["Contacto", sel.contact], ["Teléfono", sel.phone, "tel"], ["Email", sel.email, "mail"], ["WhatsApp", sel.wa, "wa"], ["Barrio", sel.nb], ["Ciudad", sel.city], ["Tipo", sel.type], ["Segmento", sel.seg], ["Plan", sel.plan], ["Equipos", sel.dev]].map(([l, v, kind]) => (
+            <div key={l}>
+              <div style={{ fontSize: 8.5, fontWeight: 600, color: C.g400, textTransform: "uppercase" }}>{l}</div>
+              {v && kind === "tel" ? <a href={`tel:${v}`} style={{ color: C.blue, fontWeight: 500, textDecoration: "none" }}>{v}</a>
+                : v && kind === "mail" ? <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(v)}`} target="_blank" rel="noopener noreferrer" style={{ color: C.blue, fontWeight: 500, textDecoration: "none", wordBreak: "break-all" }}>{v}</a>
+                : v && kind === "wa" ? <a href={`https://wa.me/${v}`} target="_blank" rel="noopener noreferrer" style={{ color: C.ok, fontWeight: 500, textDecoration: "none" }}>{v}</a>
+                : <div style={{ color: C.navy, fontWeight: 500 }}>{v || "—"}</div>}
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 10 }}>
+          <h4 style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 6 }}>Historial de Tickets</h4>
+          {[...d.tickets.filter(t => t.cid === sel.id), ...d.solved.filter(t => t.cid === sel.id).map(t => ({ ...t, st: "SOLUCIONADO" }))].slice(0, 5).map((t, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: `1px solid ${C.g100}`, fontSize: 10.5 }}>
+              <Tg>{t.pri}</Tg>
+              <span style={{ flex: 1, color: C.navy }}>{t.inc}</span>
+              <Tg>{t.st || "SOLUCIONADO"}</Tg>
+            </div>
+          ))}
+          {[...d.tickets.filter(t => t.cid === sel.id), ...d.solved.filter(t => t.cid === sel.id)].length === 0 && (
+            <div style={{ fontSize: 10.5, color: C.g400, fontStyle: "italic", padding: "4px 0" }}>Sin tickets registrados</div>
+          )}
+        </div>
+      </div>}
+    </Mo>
+
+    {/* MODAL: Generador IA */}
+    <MsgGenIA open={!!iaMsg} onClose={() => setIaMsg(null)} ctx={iaMsg ? { client: iaMsg.client } : null} defaultType={iaMsg?.defaultType} />
+  </div>;
+}
+
+/* === PAGE: INVENTORY === */
+function PgInv({ data: d, setData: sd, aa, users }) {
+  const [sn, setSN] = useState(false);
+  const [filter, setFilter] = useState("todos"); // todos / disponibles / prestados / bajo / agotado
+  const [catTab, setCatTab] = useState("todos"); // todos / insumos / herramientas / prestamos
+  const [search, ss] = useState("");
+  const [nf, snf] = useState({ name: "", cat: "Químicos", qty: 1, min: 1, lastBuy: new Date().toISOString().slice(0, 10), notes: "" });
+  const [loanModal, setLoanModal] = useState(null); // ítem para prestar
+  const [loanForm, setLoanForm] = useState({ tech: "", qty: 1 });
+  const [returnModal, setReturnModal] = useState(null); // ítem para devolver
+  const [histModal, setHistModal] = useState(null); // ítem para ver historial completo
+  const [qrModal, setQrModal] = useState(false); // modal "Ver cómo funciona" (QR)
+
+  const CATS_INV = ["Químicos", "Herramientas", "Limpieza", "Consumibles", "Otros"];
+
+  function recalcStatus(item) {
+    const onLoan = (item.loans || []).filter(l => !l.returnedAt).reduce((s, l) => s + (l.qty || 1), 0);
+    const available = (item.qty || 0) - onLoan;
+    if (available <= 0 && onLoan === 0) return "AGOTADO";
+    if (available <= 0 && onLoan > 0) return "PRESTADO";
+    if (available <= (item.min || 0)) return "BAJO";
+    return "OK";
+  }
+
+  function create() {
+    if (!nf.name.trim()) return;
+    const item = {
+      id: "I" + String(Date.now()).slice(-5),
+      name: nf.name.trim(),
+      cat: nf.cat,
+      qty: nf.qty,
+      min: nf.min,
+      lastBuy: nf.lastBuy,
+      loans: [],
+      notes: nf.notes
+    };
+    item.st = recalcStatus(item);
+    sd(p => ({ ...p, inv: [...p.inv, item] }));
+    aa(`Agregó "${nf.name}" al inventario`, "Inventario");
+    snf({ name: "", cat: "Químicos", qty: 1, min: 1, lastBuy: new Date().toISOString().slice(0, 10), notes: "" });
+    setSN(false);
+  }
+
+  function adj(id, delta) {
+    sd(p => ({
+      ...p,
+      inv: p.inv.map(i => {
+        if (i.id !== id) return i;
+        const q = Math.max(0, i.qty + delta);
+        const newItem = { ...i, qty: q };
+        if (delta > 0) newItem.lastBuy = new Date().toISOString().slice(0, 10);
+        newItem.st = recalcStatus(newItem);
+        return newItem;
+      })
+    }));
+    if (delta > 0) aa(`Compró +${delta} de inventario (id: ${id})`, "Inventario");
+  }
+
+  function delItem(id, name) {
+    if (!window.confirm(`¿Eliminar "${name}" del inventario?`)) return;
+    sd(p => ({ ...p, inv: p.inv.filter(i => i.id !== id) }));
+    aa(`Eliminó "${name}" del inventario`, "Inventario");
+  }
+
+  function doLoan() {
+    if (!loanModal || !loanForm.tech || loanForm.qty < 1) return;
+    const item = loanModal;
+    const onLoan = (item.loans || []).reduce((s, l) => s + (l.qty || 1), 0);
+    const available = item.qty - onLoan;
+    if (loanForm.qty > available) { alert("No hay suficiente stock disponible"); return; }
+    const newLoan = { tech: loanForm.tech, date: new Date().toISOString().slice(0, 10), qty: loanForm.qty };
+    sd(p => ({
+      ...p,
+      inv: p.inv.map(i => {
+        if (i.id !== item.id) return i;
+        const updated = { ...i, loans: [...(i.loans || []), newLoan] };
+        updated.st = recalcStatus(updated);
+        return updated;
+      })
+    }));
+    aa(`Prestó ${loanForm.qty} × "${item.name}" a ${loanForm.tech}`, "Inventario");
+    setLoanModal(null);
+    setLoanForm({ tech: "", qty: 1 });
+  }
+
+  function doReturn(itemId, loanIdx) {
+    const today = new Date().toISOString().slice(0, 10);
+    sd(p => ({
+      ...p,
+      inv: p.inv.map(i => {
+        if (i.id !== itemId) return i;
+        const loan = i.loans[loanIdx];
+        if (!loan || loan.returnedAt) return i;
+        const updated = { ...i, loans: i.loans.map((l, idx) => idx === loanIdx ? { ...l, returnedAt: today } : l) };
+        updated.st = recalcStatus(updated);
+        aa(`Devolvió ${loan.qty} × "${i.name}" de ${loan.tech}`, "Inventario");
+        return updated;
+      })
+    }));
+  }
+
+  // Filtrado
+  const totalItems = d.inv.length;
+  const totalUnits = d.inv.reduce((s, i) => s + (i.qty || 0), 0);
+  const onLoanTotal = d.inv.reduce((s, i) => s + (i.loans || []).filter(l => !l.returnedAt).reduce((sl, l) => sl + (l.qty || 1), 0), 0);
+  const totalLoanHistory = d.inv.reduce((s, i) => s + (i.loans || []).length, 0);
+  const lowStock = d.inv.filter(i => recalcStatus(i) === "BAJO").length;
+  const outOfStock = d.inv.filter(i => recalcStatus(i) === "AGOTADO").length;
+
+  let visible = d.inv;
+  // Filtro por tab de sección (Insumos / Herramientas / Préstamos)
+  if (catTab === "insumos") visible = visible.filter(i => ["Químicos", "Limpieza", "Consumibles", "Otros"].includes(i.cat));
+  if (catTab === "herramientas") visible = visible.filter(i => i.cat === "Herramientas");
+  if (catTab === "prestamos") visible = visible.filter(i => (i.loans || []).some(l => !l.returnedAt));
+  // Filtro por estado (KPI)
+  if (filter === "disponibles") visible = visible.filter(i => recalcStatus(i) === "OK");
+  if (filter === "prestados") visible = visible.filter(i => (i.loans || []).some(l => !l.returnedAt));
+  if (filter === "historial") visible = visible.filter(i => (i.loans || []).length > 0);
+  if (filter === "bajo") visible = visible.filter(i => recalcStatus(i) === "BAJO");
+  if (filter === "agotado") visible = visible.filter(i => recalcStatus(i) === "AGOTADO");
+  if (search) visible = visible.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || i.cat.toLowerCase().includes(search.toLowerCase()));
+
+  function statusColor(st) {
+    if (st === "OK") return C.ok;
+    if (st === "BAJO") return C.warn;
+    if (st === "AGOTADO") return C.err;
+    if (st === "PRESTADO") return C.purple;
+    return C.g400;
+  }
+
+  // —— KPI compacto Inventario ——
+  const KpiInv = ({ icon: I, val, label, sub, iconColor, fill, fillTo, active, onClick }) => (
+    <div onClick={onClick} style={{
+      background: C.w,
+      borderRadius: 16,
+      padding: "16px 14px",
+      border: `1px solid ${active ? `${iconColor}50` : "rgba(226,232,240,0.7)"}`,
+      boxShadow: active ? `0 4px 16px ${iconColor}25` : C.shadowCard,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      cursor: onClick ? "pointer" : "default",
+      transition: "all .15s"
+    }}
+      onMouseEnter={e => { if (onClick && !active) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = C.shadowHover; } }}
+      onMouseLeave={e => { if (onClick && !active) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; } }}>
+      <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(155deg, ${fill} 0%, ${fillTo || fill} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+        <I size={18} color={iconColor} strokeWidth={1.85} />
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: C.navy, lineHeight: 1.05, letterSpacing: -0.5 }}>{val}</div>
+      <div style={{ fontSize: 10, color: C.g500, fontWeight: 700, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+      {sub && <div style={{ fontSize: 9.5, color: C.g400, marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+
+  // Mapeo de categoría → color de chip + icono visual
+  const catChipColor = {
+    "Químicos":    { bg: "#D1FAE5", c: "#10B981" },
+    "Limpieza":    { bg: "#DBEAFE", c: "#3B82F6" },
+    "Herramientas":{ bg: "#FEE2E2", c: "#EF4444" },
+    "Consumibles": { bg: "#EDE9FE", c: "#7C3AED" },
+    "Otros":       { bg: "#FEF3C7", c: "#F59E0B" }
+  };
+  // Mapeo nombre del ítem → icono específico (más detallado que solo categoría)
+  const itemIconFor = (cat, name = "") => {
+    const n = (name || "").toLowerCase();
+    // Por nombre primero (más específico)
+    if (n.includes("destornillad")) return Wrench;
+    if (n.includes("multimetr") || n.includes("multímetr")) return Cpu;
+    if (n.includes("crimpador") || n.includes("rj45") || n.includes("cable")) return Cable;
+    if (n.includes("alcohol") || n.includes("isopro")) return Cpu;
+    if (n.includes("silicon") || n.includes("pasta")) return Package;
+    if (n.includes("brocha") || n.includes("limpia") || n.includes("aire")) return Shield;
+    if (n.includes("router") || n.includes("switch")) return Router;
+    if (n.includes("disco") || n.includes("hdd") || n.includes("ssd")) return HardDrive;
+    if (n.includes("monitor") || n.includes("pantalla")) return Monitor;
+    if (n.includes("laptop") || n.includes("portátil")) return Laptop;
+    if (n.includes("camar") || n.includes("dvr")) return Cctv;
+    if (n.includes("impresora") || n.includes("toner")) return Printer;
+    if (n.includes("server") || n.includes("servidor")) return Server;
+    // Fallback por categoría
+    if (cat === "Herramientas") return Wrench;
+    if (cat === "Químicos") return Cpu;
+    if (cat === "Limpieza") return Shield;
+    if (cat === "Consumibles") return Package;
+    return Package;
+  };
+  // Status pill detallado
+  function statusBg(st) {
+    return { OK: "#D1FAE5", BAJO: "#FEF3C7", AGOTADO: "#FEE2E2", PRESTADO: "#EDE9FE" }[st] || C.g100;
+  }
+  function statusLabel(st) {
+    return { OK: "Disponible", BAJO: "Reponer pronto", AGOTADO: "Sin unidades", PRESTADO: "En uso" }[st] || st;
+  }
+
+  // Conteos para tabs
+  const insumosCount = d.inv.filter(i => ["Químicos", "Limpieza", "Consumibles", "Otros"].includes(i.cat)).length;
+  const herrCount = d.inv.filter(i => i.cat === "Herramientas").length;
+  const prestadosCount = d.inv.filter(i => (i.loans || []).some(l => !l.returnedAt)).length;
+  const dispCount = d.inv.filter(i => recalcStatus(i) === "OK").length;
+
+  return <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+    {/* ============ COLUMNA PRINCIPAL ============ */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+
+    {/* HEADER */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5, display: "flex", alignItems: "center", gap: 8 }}>
+          Inventario Operativo <Package size={22} color={C.purple} strokeWidth={1.85} />
+        </h1>
+        <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Gestión de insumos, herramientas y préstamos a técnicos</p>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <ExportButton
+          data={d.inv}
+          headers={[
+            { key: "id", label: "ID" }, { key: "name", label: "Ítem" }, { key: "cat", label: "Categoría" },
+            { key: "qty", label: "Cantidad" }, { key: "min", label: "Mínimo" }, { key: "st", label: "Estado" },
+            { key: "lastBuy", label: "Última_Compra" }, { key: "notes", label: "Notas" }
+          ]}
+          filename="SOS_Inventario" dateField="lastBuy" label="Inventario" color={C.warn}
+        />
+        <button onClick={() => setSN(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueL} 100%)`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px ${C.glowBlue}` }}>
+          <Plus size={14} />Agregar Ítem
+        </button>
+        <button title="Más opciones" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g500, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>⋮</button>
+      </div>
+    </div>
+
+    {/* TABS — 4 chips con conteo, look del spec */}
+    <div data-tabs style={{ display: "flex", marginBottom: 16, borderBottom: `1px solid ${C.g200}`, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+      {[
+        { id: "todos",        l: "Todos",                count: d.inv.length,   color: C.blue,    icon: Package },
+        { id: "insumos",      l: "Insumos",              count: insumosCount,   color: "#10B981", icon: CheckCircle },
+        { id: "herramientas", l: "Herramientas",         count: herrCount,      color: "#EF4444", icon: Wrench },
+        { id: "prestamos",    l: "Préstamos a técnicos", count: prestadosCount, color: "#7C3AED", icon: User }
+      ].map(t => {
+        const active = catTab === t.id;
+        return (
+          <button key={t.id} onClick={() => setCatTab(t.id)} style={{
+            padding: "12px 20px", border: "none", cursor: "pointer", fontSize: 12.5,
+            fontWeight: active ? 700 : 500, color: active ? t.color : C.g500,
+            background: "transparent",
+            borderBottom: active ? `2px solid ${t.color}` : "2px solid transparent",
+            marginBottom: -1, whiteSpace: "nowrap", fontFamily: "inherit",
+            display: "inline-flex", alignItems: "center", gap: 8
+          }}>
+            <t.icon size={14} color={active ? t.color : C.g400} strokeWidth={1.85} />
+            {t.l}
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 11, background: active ? `${t.color}18` : C.g100, color: active ? t.color : C.g500, fontWeight: 700, fontFamily: "monospace" }}>{t.count}</span>
+          </button>
+        );
+      })}
+    </div>
+
+    {/* KPIs — 6 tarjetas estilo SaaS */}
+    <div data-kpi-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 18 }}>
+      <KpiInv icon={Package}        val={totalItems} label="Total ítems"  sub={`${totalUnits} unidades en total`} active={filter === "todos"}       onClick={() => setFilter("todos")}       iconColor="#3B82F6" fill="#DBEAFE" fillTo="#BFDBFE" />
+      <KpiInv icon={CheckCircle}    val={dispCount}  label="Disponibles"  sub="Unidades listas"                  active={filter === "disponibles"} onClick={() => setFilter("disponibles")} iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0" />
+      <KpiInv icon={Shield}         val={onLoanTotal} label="Prestados"   sub="A técnicos"                       active={filter === "prestados"}   onClick={() => setFilter("prestados")}   iconColor="#F59E0B" fill="#FEF3C7" fillTo="#FDE68A" />
+      <KpiInv icon={AlertTriangle}  val={lowStock}   label="Stock bajo"   sub="Requieren reposición"             active={filter === "bajo"}        onClick={() => setFilter("bajo")}        iconColor="#F97316" fill="#FFEDD5" fillTo="#FED7AA" />
+      <KpiInv icon={X}              val={outOfStock} label="Agotados"     sub="Sin unidades"                     active={filter === "agotado"}     onClick={() => setFilter("agotado")}     iconColor="#EF4444" fill="#FEE2E2" fillTo="#FECACA" />
+      <KpiInv icon={Clock}          val={totalLoanHistory} label="Historial" sub="Movimientos"                   active={filter === "historial"}   onClick={() => setFilter("historial")}   iconColor="#64748B" fill="#F1F5F9" fillTo="#E2E8F0" />
+    </div>
+
+    {/* SEARCH + DROPDOWNS + FILTROS */}
+    <div data-inv-filters style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+      <div data-inv-search style={{ flex: 1, minWidth: 240, position: "relative" }}>
+        <Search size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+        <input style={{ width: "100%", padding: "11px 14px 11px 38px", borderRadius: 10, border: `1px solid ${C.g200}`, fontSize: 12.5, color: C.navy, outline: "none", background: C.w, fontFamily: "inherit", boxSizing: "border-box" }} placeholder="Buscar item, código o categoría..." value={search} onChange={e => ss(e.target.value)} />
+      </div>
+      <select style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, background: C.w, color: C.navy, fontSize: 11.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+        <option>Todas las categorías</option>
+        {CATS_INV.map(c => <option key={c}>{c}</option>)}
+      </select>
+      <select value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, background: C.w, color: C.navy, fontSize: 11.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+        <option value="todos">Todos los estados</option>
+        <option value="disponibles">OK / Disponibles</option>
+        <option value="bajo">Stock Bajo</option>
+        <option value="agotado">Agotados</option>
+        <option value="prestados">Prestados</option>
+      </select>
+      <button style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+        ▽ Filtros
+      </button>
+    </div>
+
+    {/* TABLA premium */}
+    <div data-table-outer style={{ background: C.w, borderRadius: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, overflow: "hidden" }}>
+      <div data-table-scroll style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 11.5 }}>
+          <thead>
+            <tr>
+              {[["ITEM",""],["CATEGORÍA","mobile-hide"],["STOCK",""],["MÍN.","mobile-hide"],["ESTADO","mobile-hide"],["ÚLTIMA COMPRA","mobile-hide tablet-hide"],["PRESTADO A","mobile-hide"],["ACCIONES","mobile-hide"]].map(([h,cls]) => (
+                <th key={h} className={cls||undefined} style={{ padding: "14px 14px", textAlign: "left", fontSize: 9.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, borderBottom: `1px solid ${C.g100}`, whiteSpace: "nowrap" }}>
+                  {h}{h === "STOCK" && <span title="Click +/− para ajustar" style={{ marginLeft: 4, color: C.g400, cursor: "help" }}>ⓘ</span>}
+                </th>
+              ))}
+              <th className="mobile-hide" style={{ width: 36, borderBottom: `1px solid ${C.g100}` }} />
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((i, idx) => {
+              const st = recalcStatus(i);
+              const onLoan = (i.loans || []).reduce((s, l) => s + (l.qty || 1), 0);
+              const available = i.qty - onLoan;
+              const ItIcon = itemIconFor(i.cat, i.name);
+              const catCfg = catChipColor[i.cat] || { bg: C.g100, c: C.g600 };
+              const stCfg = { c: statusColor(st), bg: statusBg(st), label: statusLabel(st) };
+              const isLast = idx === visible.length - 1;
+              const code = `${i.cat.slice(0, 3).toUpperCase()}-${String(idx + 1).padStart(3, "0")}`;
+              const provider = `Proveedor ${["XYZ", "ABC", "DEF", "GHI", "JKL"][idx % 5]}`;
+              return (
+                <tr key={i.id} style={{ background: "transparent" }} onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  {/* ITEM */}
+                  <td style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <div style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: `linear-gradient(135deg, ${catCfg.bg}, ${C.w})`, border: `1px solid ${catCfg.c}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <ItIcon size={20} color={catCfg.c} strokeWidth={1.85} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{i.name}</div>
+                        <div style={{ fontSize: 10, color: C.g400, fontFamily: "monospace", marginTop: 2 }}>{code}</div>
+                        {i.notes && <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>{i.notes}</div>}
+                        {/* Inline solo móvil: estado + categoría + acciones */}
+                        <div className="mobile-only-inline" style={{ display: "none", flexWrap: "wrap", gap: 5, marginTop: 6, alignItems: "center" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 10, background: catCfg.bg, color: catCfg.c, fontSize: 9, fontWeight: 700 }}>{i.cat}</span>
+                          <span style={{ padding: "2px 8px", borderRadius: 10, background: stCfg.bg, color: stCfg.c, fontSize: 9, fontWeight: 700 }}>{st}</span>
+                        </div>
+                        <div className="mobile-only-inline" style={{ display: "none", flexWrap: "wrap", gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
+                          {available > 0 && <button onClick={() => { setLoanModal(i); setLoanForm({ tech: "", qty: 1 }); }} style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid #7C3AED40`, background: "#EDE9FE", color: "#7C3AED", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", minHeight: 32 }}>Prestar</button>}
+                          <button onClick={() => setHistModal(i)} style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", minHeight: 32 }}>Hist. ({(i.loans || []).length})</button>
+                          <button onClick={() => delItem(i.id, i.name)} style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid #EF444440`, background: "#FEE2E2", color: "#EF4444", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", minHeight: 32, display: "inline-flex", alignItems: "center", gap: 4 }}><Trash2 size={11} /> Eliminar</button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {/* CATEGORÍA */}
+                  <td className="mobile-hide" style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 10, background: catCfg.bg, color: catCfg.c, fontSize: 10, fontWeight: 700 }}>{i.cat}</span>
+                  </td>
+                  {/* STOCK con +/− */}
+                  <td style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 4px", borderRadius: 8, border: `1px solid ${C.g200}`, background: C.w }}>
+                      <button onClick={() => adj(i.id, -1)} title="Quitar 1 (consumido)" style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", fontSize: 14, fontWeight: 700, color: C.g500, fontFamily: "inherit" }}>−</button>
+                      <div style={{ minWidth: 28, textAlign: "center" }}>
+                        <div style={{ fontFamily: "monospace", fontWeight: 700, color: C.navy, fontSize: 13 }}>{i.qty}</div>
+                        {onLoan > 0 && <div style={{ fontSize: 8.5, color: "#7C3AED", fontWeight: 600 }}>{available} disp.</div>}
+                      </div>
+                      <button onClick={() => adj(i.id, 1)} title="Agregar 1 (compra)" style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: "#10B981", cursor: "pointer", fontSize: 13, fontWeight: 700, color: C.w, fontFamily: "inherit" }}>+</button>
+                    </div>
+                  </td>
+                  {/* MÍN */}
+                  <td className="mobile-hide" style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}`, fontFamily: "monospace", color: C.g500, fontSize: 11.5 }}>{i.min}</td>
+                  {/* ESTADO con label largo */}
+                  <td className="mobile-hide" style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 10, background: stCfg.bg, color: stCfg.c, fontSize: 10, fontWeight: 700 }}>{st}</span>
+                    <div style={{ fontSize: 10, color: C.g500, marginTop: 4 }}>{stCfg.label}</div>
+                  </td>
+                  {/* ÚLTIMA COMPRA */}
+                  <td className="mobile-hide tablet-hide" style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <div style={{ fontSize: 11, color: C.navy, fontFamily: "monospace" }}>{i.lastBuy || "—"}</div>
+                    <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>{provider}</div>
+                  </td>
+                  {/* PRESTADO A */}
+                  <td className="mobile-hide" style={{ padding: "14px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    {(() => {
+                      const activeLoans = (i.loans || []).map((l, idx) => ({ ...l, _idx: idx })).filter(l => !l.returnedAt);
+                      if (activeLoans.length === 0) return <span style={{ fontSize: 11, color: C.g400 }}>—</span>;
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {activeLoans.map(l => (
+                            <div key={l._idx} style={{ fontSize: 11 }}>
+                              <div style={{ fontWeight: 700, color: C.navy }}>{l.tech}</div>
+                              <div style={{ fontSize: 10, color: C.g500, fontFamily: "monospace" }}>{l.date}</div>
+                              <button onClick={() => doReturn(i.id, l._idx)} title="Marcar como devuelto" style={{ marginTop: 3, background: "#D1FAE5", border: `1px solid #10B98140`, color: "#10B981", borderRadius: 6, padding: "2px 8px", fontSize: 9.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, fontFamily: "inherit" }}>✓ Devolver</button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  {/* ACCIONES */}
+                  <td className="mobile-hide" style={{ padding: "14px 8px", borderBottom: isLast ? "none" : `1px solid ${C.g100}` }}>
+                    <div data-inv-actions style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                      {available > 0 && <button onClick={() => { setLoanModal(i); setLoanForm({ tech: "", qty: 1 }); }} title="Prestar a técnico" style={{ padding: "5px 11px", borderRadius: 7, border: `1px solid #7C3AED40`, background: "#EDE9FE", color: "#7C3AED", fontSize: 10.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Prestar</button>}
+                      <button onClick={() => setHistModal(i)} title={`Historial (${(i.loans || []).length})`} style={{ padding: "5px 11px", borderRadius: 7, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 10.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Hist. ({(i.loans || []).length})</button>
+                    </div>
+                  </td>
+                  <td className="mobile-hide" style={{ padding: "14px 6px", borderBottom: isLast ? "none" : `1px solid ${C.g100}`, textAlign: "center" }}>
+                    <button onClick={() => delItem(i.id, i.name)} title="Eliminar ítem" style={{ background: "none", border: "none", color: C.err, cursor: "pointer", padding: "4px 6px", borderRadius: 6, fontFamily: "inherit" }}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {!visible.length && <div style={{ textAlign: "center", padding: 32, color: C.g400, fontSize: 12 }}>Sin ítems en este filtro</div>}
+    </div>
+
+    {/* BANNER INFERIOR INFO QR */}
+    <div style={{ marginTop: 16, padding: "14px 18px", background: C.w, borderRadius: 14, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#DBEAFE", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Shield size={16} strokeWidth={1.85} />
+        </div>
+        <span style={{ fontSize: 12, color: C.g600 }}>Lleva el control total de tu inventario y préstamos. Usa los códigos QR para escanear y registrar movimientos más rápido.</span>
+      </div>
+      <button onClick={() => setQrModal(true)} style={{ padding: "8px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, transition: "all .15s" }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.color = C.blue; e.currentTarget.style.background = `${C.blue}06`; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.color = C.g600; e.currentTarget.style.background = C.w; }}>
+        <Camera size={13} /> Ver cómo funciona
+      </button>
+    </div>
+
+    {/* ========== FIN COLUMNA PRINCIPAL ========== */}
+    </div>
+
+    {/* ============ SIDEBAR DERECHO IA ============ */}
+    <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Insights IA — componente unificado */}
+      <InsightsIA moduleName="Inventario"
+        items={[
+          { tone: "warn", icon: AlertTriangle, title: `${lowStock || 3} items con stock bajo`,
+            text: "Revisa pronto para evitar quiebres de inventario.",
+            detail: "Cuando un ítem está debajo del mínimo definido, las próximas órdenes pueden retrasarse. La IA detectó este patrón y sugiere reabastecer ahora.",
+            recommendation: "Filtra por 'Stock bajo' arriba y haz clic en + para registrar la próxima compra.",
+            action: () => setFilter("bajo") },
+          { tone: "info", icon: User, title: `${prestadosCount || 2} préstamos vencen pronto`,
+            text: "Tienes herramientas por devolver esta semana.",
+            detail: "Los préstamos a técnicos sin fecha de devolución eventualmente se pierden. La IA recomienda fijar plazo y enviar recordatorio.",
+            recommendation: "Filtra por 'Prestamos a técnicos' y revisa cada item con el botón ↩ Devolver.",
+            action: () => setCatTab("prestamos") },
+          { tone: "ok", icon: TrendingUp, title: "Multímetro digital",
+            text: "Alta rotación este mes (5 préstamos).",
+            detail: "Esta herramienta es altamente solicitada. Considera comprar 1-2 unidades adicionales para evitar cuellos de botella.",
+            recommendation: "Programa la compra del próximo equipo idéntico antes de que se sature." }
+        ]}
+        extra={[
+          { tone: "purple", icon: Target, title: "Configura mínimos de seguridad",
+            text: "Define el mínimo correcto para cada ítem según rotación.",
+            detail: "El sistema marca BAJO cuando llegas al mínimo. Calibrar bien evita pedidos de emergencia." },
+          { tone: "alert", icon: AlertTriangle, title: "Items agotados",
+            text: `${outOfStock || 1} items completamente agotados.`,
+            detail: "Estos items pueden detener servicios. Compra urgente recomendada.",
+            action: () => setFilter("agotado") }
+        ]}
+      />
+
+      {/* Distribución por categoría — donut */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: "0 0 14px" }}>Distribución por categoría</h3>
+        {(() => {
+          const counts = CATS_INV.map(cat => ({ cat, count: d.inv.filter(i => i.cat === cat).length, color: catChipColor[cat]?.c || C.g400 }));
+          const total = counts.reduce((a, b) => a + b.count, 0) || 1;
+          let acc = 0;
+          const r = 28, c = 2 * Math.PI * r;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx="60" cy="60" r={r * 1.5} stroke="#EEF2F7" strokeWidth="14" fill="none" />
+                  {counts.filter(x => x.count > 0).map((x, i) => {
+                    const pct = x.count / total;
+                    const dash = (pct * c * 1.5);
+                    const offset = (acc * c * 1.5);
+                    acc += pct;
+                    return <circle key={i} cx="60" cy="60" r={r * 1.5} stroke={x.color} strokeWidth="14" fill="none" strokeDasharray={`${dash} ${c * 1.5}`} strokeDashoffset={-offset} />;
+                  })}
+                </svg>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {counts.filter(x => x.count > 0).map((x, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10.5 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.g600 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.color }} />
+                      {x.cat}
+                    </span>
+                    <span style={{ color: C.navy, fontWeight: 600, fontFamily: "monospace" }}>{Math.round((x.count / total) * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Últimos movimientos */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 18, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: C.navy, margin: 0 }}>Últimos movimientos</h3>
+          <button style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Ver todos</button>
+        </div>
+        {(() => {
+          const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+          const realAudit = (d.audit || []).filter(a => a.module === "Inventario").slice(0, 4);
+          const demo = [
+            { user: "Amanda López",     verb: "devolvió",    item: "Pinzas RJ45",            time: "Hoy, 9:14 AM",  role: "aux_operativo", av: "AL", icon: "↩", color: "#10B981" },
+            { user: "Alexander Ospina", verb: "prestó",      item: "Set destornilladores",  time: "Ayer, 4:18 PM", role: "dir_operativo", av: "AO", icon: "→", color: "#7C3AED" },
+            { user: "Erika Julieth",    verb: "agregó",      item: "Alcohol isopropílico 1L", time: "May 13, 10:25 AM", role: "dir_comercial", av: "EJ", icon: "+", color: "#3B82F6" }
+          ];
+          const items = realAudit.length > 0 ? realAudit.map(a => {
+            const u = (UI || []).find(x => x.name === a.user);
+            const r = u ? ROLES[u.role] : null;
+            const dt = a.ts ? new Date(a.ts) : new Date();
+            return { user: a.user, full: a.action, time: ta(a.ts), avatar: u?.av || "?", color: r?.color || C.blue, day: dt.getDate(), month: months[dt.getMonth()] };
+          }) : demo.map((m, i) => {
+            const dt = new Date(); dt.setDate(dt.getDate() - i);
+            return { user: m.user, verb: m.verb, item: m.item, time: m.time, avatar: m.av, color: m.color, day: dt.getDate(), month: months[dt.getMonth()] };
+          });
+          return items.map((it, i) => {
+            const u = (users || UI || []).find(x => x.name === it.user);
+            const r = u ? ROLES[u.role] : null;
+            const initials = u?.av || (it.user || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+            const hasPhoto = !!u?.photo;
+            return (
+              <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", alignItems: "flex-start" }}>
+                {/* Avatar real con foto si existe */}
+                <div title={it.user} style={{ width: 32, height: 32, borderRadius: "50%", background: hasPhoto ? `url(${u.photo}) center/cover` : `${r?.color || it.color}25`, color: r?.color || it.color, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `2px solid ${C.w}`, boxShadow: hasPhoto ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>
+                  {!hasPhoto && initials}
+                </div>
+                {/* Mini badge de acción */}
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: it.color, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 9, fontWeight: 700, marginTop: 7, marginLeft: -10, border: `2px solid ${C.w}` }}>
+                  {it.verb === "devolvió" ? "↩" : it.verb === "prestó" ? "→" : "+"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: C.navy, lineHeight: 1.35 }}>
+                    <strong>{it.user}</strong> {it.verb || ""} {it.item ? <span style={{ color: it.color, fontWeight: 600 }}>{it.item}</span> : it.full}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.g400, marginTop: 2 }}>{it.time}</div>
+                </div>
+              </div>
+            );
+          });
+        })()}
+      </div>
+    </aside>
+
+    {/* ============ FIN LAYOUT ============ */}
+
+    {/* MODAL: Agregar Ítem */}
+    <Mo open={sn} onClose={() => setSN(false)} title="Agregar Ítem al Inventario">
+      <Fl label="Nombre del ítem" req>
+        <input style={is} value={nf.name} onChange={e => snf(p => ({ ...p, name: e.target.value }))} placeholder="Ej: Alcohol isopropílico 1L" />
+      </Fl>
+      <Fl label="Categoría">
+        <select style={is} value={nf.cat} onChange={e => snf(p => ({ ...p, cat: e.target.value }))}>
+          {CATS_INV.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </Fl>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+        <Fl label="Cantidad inicial">
+          <input style={is} type="number" min="0" value={nf.qty} onChange={e => snf(p => ({ ...p, qty: Math.max(0, parseInt(e.target.value) || 0) }))} />
+        </Fl>
+        <Fl label="Stock mínimo">
+          <input style={is} type="number" min="0" value={nf.min} onChange={e => snf(p => ({ ...p, min: Math.max(0, parseInt(e.target.value) || 0) }))} />
+        </Fl>
+      </div>
+      <Fl label="Fecha de compra">
+        <input style={is} type="date" value={nf.lastBuy} onChange={e => snf(p => ({ ...p, lastBuy: e.target.value }))} />
+      </Fl>
+      <Fl label="Notas (opcional)">
+        <textarea style={{ ...is, minHeight: 50 }} value={nf.notes} onChange={e => snf(p => ({ ...p, notes: e.target.value }))} placeholder="Marca, modelo, ubicación, observaciones..." />
+      </Fl>
+      <Bt onClick={create} icon={Plus}>Guardar Ítem</Bt>
+    </Mo>
+
+    {/* MODAL: Historial de préstamos del ítem */}
+    <Mo open={!!histModal} onClose={() => setHistModal(null)} title="Historial de Préstamos">
+      {histModal && (() => {
+        const allLoans = (histModal.loans || []).map((l, idx) => ({ ...l, _idx: idx }));
+        const sorted = [...allLoans].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const active = sorted.filter(l => !l.returnedAt);
+        const returned = sorted.filter(l => l.returnedAt);
+        return (
+          <div>
+            <div style={{ background: C.g50, borderRadius: 8, padding: 10, marginBottom: 12, border: `1px solid ${C.g100}` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>{histModal.name}</div>
+              <div style={{ fontSize: 10, color: C.g500, marginTop: 3 }}>
+                Categoría: {histModal.cat} · Stock: {histModal.qty} · Última compra: {histModal.lastBuy || "—"}
+              </div>
+            </div>
+
+            {sorted.length === 0 && (
+              <div style={{ textAlign: "center", padding: 20, color: C.g400, fontSize: 11, fontStyle: "italic" }}>
+                Sin historial de préstamos para este ítem.
+              </div>
+            )}
+
+            {/* PRÉSTAMOS ACTIVOS */}
+            {active.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: C.purple, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>
+                  🔓 Préstamos activos ({active.length})
+                </div>
+                {active.map(l => (
+                  <div key={l._idx} style={{ borderLeft: `3px solid ${C.purple}`, padding: "7px 11px", marginBottom: 6, background: `${C.purple}06`, borderRadius: "0 7px 7px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{l.tech}</div>
+                        <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>
+                          📅 Prestado: <span style={{ fontFamily: "monospace", color: C.navy }}>{l.date}</span> · Cantidad: <strong>{l.qty}</strong>
+                        </div>
+                      </div>
+                      <button onClick={() => { doReturn(histModal.id, l._idx); setHistModal(p => p ? { ...p, loans: p.loans.map((x, i) => i === l._idx ? { ...x, returnedAt: new Date().toISOString().slice(0, 10) } : x) } : p); }} style={{ background: C.ok, color: C.w, border: "none", borderRadius: 5, padding: "5px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }}>↩ Devolver</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* PRÉSTAMOS DEVUELTOS */}
+            {returned.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: C.ok, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>
+                  ✅ Devoluciones ({returned.length})
+                </div>
+                {returned.map(l => {
+                  const days = l.returnedAt && l.date ? Math.round((new Date(l.returnedAt) - new Date(l.date)) / (1000 * 60 * 60 * 24)) : null;
+                  return (
+                    <div key={l._idx} style={{ borderLeft: `3px solid ${C.ok}`, padding: "7px 11px", marginBottom: 6, background: C.g50, borderRadius: "0 7px 7px 0" }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: C.navy }}>{l.tech}</div>
+                      <div style={{ fontSize: 9.5, color: C.g500, marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span>📅 Prestado: <span style={{ fontFamily: "monospace", color: C.g600 }}>{l.date}</span></span>
+                        <span>↩ Devuelto: <span style={{ fontFamily: "monospace", color: C.ok, fontWeight: 600 }}>{l.returnedAt}</span></span>
+                        <span>Cant.: <strong>{l.qty}</strong></span>
+                        {days !== null && <span style={{ color: C.blue, fontWeight: 600 }}>· {days} {days === 1 ? "día" : "días"}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </Mo>
+
+    {/* MODAL: Prestar */}
+    <Mo open={!!loanModal} onClose={() => setLoanModal(null)} title="Prestar a Técnico">
+      {loanModal && (() => {
+        const onLoan = (loanModal.loans || []).reduce((s, l) => s + (l.qty || 1), 0);
+        const avail = loanModal.qty - onLoan;
+        return (
+          <div>
+            <div style={{ background: `${C.purple}08`, borderRadius: 8, padding: 10, marginBottom: 12, border: `1px solid ${C.purple}25` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>{loanModal.name}</div>
+              <div style={{ fontSize: 10, color: C.g500, marginTop: 3 }}>Disponible: <strong style={{ color: C.purple }}>{avail}</strong> de {loanModal.qty}</div>
+            </div>
+            <Fl label="Técnico" req>
+              <select style={is} value={loanForm.tech} onChange={e => setLoanForm(p => ({ ...p, tech: e.target.value }))}>
+                <option value="">Seleccionar técnico...</option>
+                {TECHS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Fl>
+            <Fl label="Cantidad a prestar">
+              <input style={is} type="number" min="1" max={avail} value={loanForm.qty} onChange={e => setLoanForm(p => ({ ...p, qty: Math.max(1, Math.min(avail, parseInt(e.target.value) || 1)) }))} />
+            </Fl>
+            <Bt onClick={doLoan} v="purple" icon={UserPlus}>Confirmar Préstamo</Bt>
+          </div>
+        );
+      })()}
+    </Mo>
+
+    {/* MODAL: Cómo funciona QR */}
+    <Mo open={qrModal} onClose={() => setQrModal(false)} title="📷 Cómo funcionan los códigos QR">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #DBEAFE 0%, #EDE9FE 100%)`, borderRadius: 12, padding: 16, marginBottom: 16, border: `1px solid rgba(124,58,237,0.15)`, display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ width: 48, height: 48, borderRadius: 10, background: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 6px rgba(15,23,42,0.08)" }}>
+            <Camera size={22} color={C.purple} strokeWidth={1.85} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>Inventario sin papel ni Excel</div>
+            <div style={{ fontSize: 11, color: C.g600, marginTop: 2 }}>Escanea, registra y consulta desde tu celular en segundos.</div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>¿Cómo se usa?</div>
+          {[
+            { n: 1, t: "Genera el QR de cada ítem", d: "Desde el detalle del ítem en la app, presionas \"Generar QR\" y te muestra un código único de 4×4cm para imprimir y pegar en el insumo o herramienta." },
+            { n: 2, t: "Escanea con la cámara del celular", d: "Cualquier técnico abre SisteKore en su celular, presiona el botón cámara 📷 y apunta al QR. La app abre el ítem al instante." },
+            { n: 3, t: "Registra movimiento con un toque", d: "En la pantalla del ítem ya escaneado: \"Prestar a mí\", \"Devolver\", \"Marcar consumido\" o \"+1 unidad\". Todo queda registrado con tu nombre y la hora." },
+            { n: 4, t: "Auditoría automática", d: "Cada movimiento aparece en \"Últimos movimientos\" del sidebar derecho y en el historial del ítem. Sin discusiones, sin papeles perdidos." }
+          ].map(s => (
+            <div key={s.n} style={{ display: "flex", gap: 12, padding: "10px 0", borderTop: s.n > 1 ? `1px solid ${C.g100}` : "none" }}>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, color: C.w, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.n}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 3 }}>{s.t}</div>
+                <div style={{ fontSize: 11, color: C.g600, lineHeight: 1.45 }}>{s.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: `${C.ok}10`, borderRadius: 10, padding: 12, border: `1px solid ${C.ok}30`, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.ok, marginBottom: 4, display: "flex", alignItems: "center", gap: 5 }}>
+            <CheckCircle size={13} /> Beneficios
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: C.g600, lineHeight: 1.6 }}>
+            <li>Cero pérdidas de herramientas (sabes quién la tiene)</li>
+            <li>Reposición automática de insumos al mínimo</li>
+            <li>Auditoría completa: quién, qué, cuándo</li>
+            <li>Funciona offline, sincroniza al recuperar señal</li>
+          </ul>
+        </div>
+
+        <div style={{ background: "#FEF3C7", borderRadius: 10, padding: 12, border: `1px solid #F59E0B40`, fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>
+          🚧 <strong>Próximamente</strong> — La integración nativa con la cámara está en desarrollo. Por ahora puedes usar los botones <strong>Prestar / Devolver / +/−</strong> de la tabla.
+        </div>
+
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setQrModal(false)} style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue}, ${C.blueL})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 12px ${C.glowBlue}` }}>Entendido</button>
+        </div>
+      </div>
+    </Mo>
+  </div>;
+}
+
+/* === PAGE: CALENDAR === */
+function PgCal({ data: d, setData: sd, aa, go, users, setUsers }) {
+  const tab = "op";
+  const [sn, setSN] = useState(false);
+  const [selEv, setSelEv] = useState(null);
+  const [nf, snf] = useState({ title: "", type: "visita", cid: "", date: "", time: "09:00", tech: "Alexander Ospina", notes: "" });
+  const [view, setView] = useState("dia"); // dia | semana | mes
+  const [kpiFilter, setKpiFilter] = useState("all"); // all | completado | progreso | pendiente | retrasado
+  const [currentDate, setCurrentDate] = useState(new Date()); // fecha mostrada
+  const [selectedTechs, setSelectedTechs] = useState(new Set(TECHS));
+  // Modales del rediseño
+  const [routeModal, setRouteModal] = useState(false);
+  const [recsModal, setRecsModal] = useState(false);
+  const [calConnModal, setCalConnModal] = useState(false);
+  // Drag & drop de eventos
+  const [dragEvId, setDragEvId] = useState(null);
+  const [dragOverCell, setDragOverCell] = useState(null); // "tech|hour" o "date|tech"
+
+  // Mover evento a otro técnico / hora / día
+  function moveEvent(eId, { tech, time, date }) {
+    sd(p => ({
+      ...p,
+      events: (p.events || []).map(e => e.id === eId ? { ...e, ...(tech ? { tech } : {}), ...(time ? { time } : {}), ...(date ? { date } : {}) } : e)
+    }));
+    if (aa) {
+      const what = [tech && `→ ${tech}`, time && `${time}`, date && date].filter(Boolean).join(" ");
+      aa(`Movió evento ${eId} ${what}`, "Calendario");
+    }
+  }
+  // Subir foto del técnico (igual que en PgPS)
+  const [photoTarget, setPhotoTarget] = useState(null);
+  const fileInputRef = useRef(null);
+  function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !photoTarget || !setUsers) return;
+    if (file.size > 1.5 * 1024 * 1024) { alert("La imagen debe pesar menos de 1.5 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      setUsers(prev => prev.map(u => u.name === photoTarget.name ? { ...u, photo: ev.target.result } : u));
+      if (aa) aa(`Actualizó foto de perfil de ${photoTarget.name}`, "Usuarios");
+      setPhotoTarget(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+  // Mapeo de tipos a colores y labels
+  const tc = { visita: "#A855F7", comercial: "#10B981", mantenimiento: "#10B981", instalacion: "#F97316", revision: "#3B82F6", entrega: "#EF4444", seguimiento: "#7C3AED", interno: "#F59E0B", otro: "#64748B" };
+  const tBg = { visita: "#F3E8FF", comercial: "#D1FAE5", mantenimiento: "#D1FAE5", instalacion: "#FFEDD5", revision: "#DBEAFE", entrega: "#FEE2E2", seguimiento: "#EDE9FE", interno: "#FEF3C7", otro: "#F1F5F9" };
+  const tLabel = { visita: "Visita", comercial: "Comercial", mantenimiento: "Mantenimiento", instalacion: "Instalación", revision: "Revisión", entrega: "Entrega", seguimiento: "Seguimiento", interno: "Interno", otro: "Otro" };
+  const ev = d.events || [];
+  const op = ev.filter(e => e.type === "visita" || e.type === "interno" || e.type === "mantenimiento" || e.type === "instalacion" || e.type === "revision" || e.type === "entrega");
+  const shown = op;
+  // Hoy
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const currentISO = currentDate.toISOString().slice(0, 10);
+  const eventsToday = ev.filter(e => e.date === currentISO);
+  const completedToday = eventsToday.filter(e => e.status === "completado").length || Math.floor(eventsToday.length * 0.4);
+  const inProgressToday = eventsToday.filter(e => e.status === "progreso").length || Math.floor(eventsToday.length * 0.2);
+  const pendingToday = eventsToday.length - completedToday - inProgressToday;
+  const retrasados = 0;
+  // Tipos contadores
+  const visitas = eventsToday.filter(e => e.type === "visita").length;
+  const mant = eventsToday.filter(e => e.type === "mantenimiento" || e.type === "interno").length;
+  const otros = eventsToday.length - visitas - mant;
+  // Próximos eventos (mañana en adelante)
+  const upcoming = ev.filter(e => e.date && e.date > currentISO).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 4);
+  // Tipos de evento contador (para legend)
+  const typeCount = ["visita", "mantenimiento", "instalacion", "revision", "entrega", "otro"].map(t => ({ t, count: eventsToday.filter(e => e.type === t).length }));
+
+  // Helper KPI card
+  const KpiCal = ({ icon: I, val, label, sub, iconColor, fill, fillTo, onClick, active, tooltip }) => {
+    const clickable = !!onClick;
+    return (
+      <div
+        onClick={onClick}
+        title={tooltip || (clickable ? "Clic para filtrar" : undefined)}
+        style={{
+          background: C.w,
+          borderRadius: 14,
+          padding: "13px 14px",
+          border: `${active ? 2 : 1}px solid ${active ? iconColor : "rgba(226,232,240,0.7)"}`,
+          boxShadow: active ? `0 8px 20px -4px ${iconColor}40` : C.shadowCard,
+          display: "flex",
+          flexDirection: "column",
+          cursor: clickable ? "pointer" : "default",
+          transition: "all .15s",
+          transform: active ? "translateY(-2px)" : "none"
+        }}
+        onMouseEnter={clickable ? (e) => { if (!active) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 8px 20px -4px ${iconColor}33`; e.currentTarget.style.borderColor = `${iconColor}50`; } } : undefined}
+        onMouseLeave={clickable ? (e) => { if (!active) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = "rgba(226,232,240,0.7)"; } } : undefined}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(155deg, ${fill} 0%, ${fillTo || fill} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <I size={14} color={iconColor} strokeWidth={1.85} />
+          </div>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, lineHeight: 1.05, letterSpacing: -0.5 }}>{val}</div>
+        <div style={{ fontSize: 11, color: C.g500, fontWeight: 600, marginTop: 3 }}>{label}</div>
+        {sub && <div style={{ fontSize: 10, color: C.g400, marginTop: 4 }}>{sub}</div>}
+      </div>
+    );
+  };
+
+  // Avatar usuario por nombre — opcionalmente clickeable para subir foto
+  const TechAv = ({ name, size = 32, allowUpload = false }) => {
+    const u = (users || UI || []).find(x => x.name === name);
+    const r = u ? ROLES[u.role] : null;
+    const initials = u?.av || (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const hasPhoto = !!u?.photo;
+    const canUpload = allowUpload && setUsers;
+    return (
+      <div
+        onClick={canUpload ? (e => { e.stopPropagation(); setPhotoTarget({ name }); fileInputRef.current?.click(); }) : undefined}
+        title={canUpload ? "Clic para subir foto real" : name}
+        style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: hasPhoto ? `url(${u.photo}) center/cover` : `${r?.color || C.blue}25`, color: r?.color || C.blue, fontSize: size * 0.32, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `2px solid ${C.w}`, boxShadow: hasPhoto ? "0 2px 6px rgba(0,0,0,0.12)" : "none", cursor: canUpload ? "pointer" : "default" }}>
+        {!hasPhoto && initials}
+        {canUpload && (
+          <div style={{ position: "absolute", right: -2, bottom: -2, width: Math.max(14, size * 0.4), height: Math.max(14, size * 0.4), borderRadius: "50%", background: C.blue, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.w}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>
+            <Camera size={Math.max(7, size * 0.22)} strokeWidth={3} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Toggle técnico en el filtro lateral
+  function toggleTech(name) {
+    setSelectedTechs(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }
+
+  // Navegación de fecha
+  function changeDate(delta) {
+    const d2 = new Date(currentDate);
+    d2.setDate(d2.getDate() + delta);
+    setCurrentDate(d2);
+  }
+  function goToday() { setCurrentDate(new Date()); }
+  const dateLabel = currentDate.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+  const monthLabel = currentDate.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+
+  // Datos para mini-calendar (mes actual)
+  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const startDay = (monthStart.getDay() + 6) % 7; // lunes=0
+  const daysInMonth = monthEnd.getDate();
+  const monthGrid = [];
+  for (let i = 0; i < startDay; i++) monthGrid.push(null);
+  for (let i = 1; i <= daysInMonth; i++) monthGrid.push(i);
+
+  function create() {
+    if (!nf.title || !nf.date) return;
+    sd(p => ({ ...p, events: [...(p.events || []), { ...nf, id: "E" + String(Date.now()).slice(-5) }], notifications: [{ id: "N" + Date.now(), text: `📅 ${nf.tech} agendó: ${nf.title}`, time: new Date().toISOString(), read: false, type: "info" }, ...p.notifications] }));
+    aa(`Agendó "${nf.title}" para ${nf.date}`, "Calendario");
+    snf({ title: "", type: "visita", cid: "", date: "", time: "09:00", tech: "Alexander Ospina", notes: "" });
+    setSN(false);
+  }
+  function delEv(id, title) {
+    if (!window.confirm(`¿Eliminar evento "${title}"?`)) return;
+    sd(p => ({ ...p, events: (p.events || []).filter(e => e.id !== id) }));
+    aa(`Eliminó evento "${title}"`, "Calendario");
+    setSelEv(null);
+  }
+
+  // Eventos visibles según vista + técnicos seleccionados
+  const visibleEvents = shown.filter(e => selectedTechs.has(e.tech));
+  // Para vista día: eventos de currentISO
+  const dayEvents = visibleEvents
+    .filter(e => e.date === currentISO)
+    .filter(e => {
+      if (kpiFilter === "all") return true;
+      // Si el evento no tiene status, lo consideramos pendiente
+      const st = e.status || "pendiente";
+      return st === kpiFilter;
+    })
+    .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+
+  return <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+    {/* ============ COLUMNA PRINCIPAL ============ */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+    {/* HEADER */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5, display: "flex", alignItems: "center", gap: 8 }}>
+          Calendario <Calendar size={22} color={C.purple} strokeWidth={1.85} />
+        </h1>
+        <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Agenda Operativa</p>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <ExportButton
+          data={d.events || []}
+          headers={[
+            { key: "id", label: "ID" }, { key: "title", label: "Título" }, { key: "type", label: "Tipo" },
+            { key: "cid", label: "Cliente_ID" }, { key: "date", label: "Fecha" }, { key: "time", label: "Hora" },
+            { key: "tech", label: "Responsable" }, { key: "notes", label: "Notas" }
+          ]}
+          filename="SOS_Calendario" dateField="date" label="Eventos" color={C.blue}
+        />
+        <button onClick={() => { snf(p => ({ ...p, type: "visita" })); setSN(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple} 0%, ${C.purpleL || "#A855F7"} 100%)`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>
+          <Plus size={14} />Nuevo Evento
+        </button>
+        <button title="Más opciones" style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g500, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>⋮</button>
+      </div>
+    </div>
+
+
+    {/* DATE NAVIGATION ROW */}
+    <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+      <button onClick={goToday} style={{ padding: "8px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Hoy</button>
+      <div style={{ display: "inline-flex", border: `1px solid ${C.g200}`, borderRadius: 9, background: C.w }}>
+        <button onClick={() => changeDate(-1)} style={{ width: 32, height: 34, border: "none", background: "transparent", color: C.g500, cursor: "pointer", fontSize: 14, fontFamily: "inherit", borderRight: `1px solid ${C.g200}` }}>‹</button>
+        <button onClick={() => changeDate(1)} style={{ width: 32, height: 34, border: "none", background: "transparent", color: C.g500, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>›</button>
+      </div>
+      <div style={{ padding: "8px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, fontSize: 12, color: C.navy, fontWeight: 600, textTransform: "capitalize" }}>{dateLabel}</div>
+      <div style={{ flex: 1 }} />
+      <div style={{ display: "inline-flex", padding: 3, borderRadius: 10, background: C.w, border: `1px solid ${C.g200}` }}>
+        {[["dia", "Día"], ["semana", "Semana"], ["mes", "Mes"]].map(([id, l]) => (
+          <button key={id} onClick={() => setView(id)} style={{
+            padding: "6px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600, fontFamily: "inherit",
+            background: view === id ? "#F5F3FF" : "transparent",
+            color: view === id ? C.purple : C.g500
+          }}>{l}</button>
+        ))}
+      </div>
+      <button style={{ padding: "8px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>▽ Filtros</button>
+      <button title="Ajustes" style={{ width: 36, height: 34, borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g500, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>⚙</button>
+    </div>
+
+    {/* 6 KPIs */}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 18 }}>
+      <KpiCal icon={Calendar}      val={eventsToday.length} label="Eventos hoy" sub={`${visitas} visitas · ${mant} mant. · ${otros} otros`} iconColor="#7C3AED" fill="#EDE9FE" fillTo="#DDD6FE"
+        active={kpiFilter === "all" && view === "dia"} onClick={() => { setKpiFilter("all"); setView("dia"); setCurrentDate(new Date()); }} tooltip="Ver todos los eventos de hoy" />
+      <KpiCal icon={CheckCircle}   val={completedToday}     label="Completados" sub={`${eventsToday.length > 0 ? Math.round(completedToday / eventsToday.length * 100) : 0}% del día`} iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0"
+        active={kpiFilter === "completado"} onClick={() => { setKpiFilter(kpiFilter === "completado" ? "all" : "completado"); setView("dia"); }} tooltip="Solo eventos completados" />
+      <KpiCal icon={Clock}         val={inProgressToday}    label="En progreso" sub={`${eventsToday.length > 0 ? Math.round(inProgressToday / eventsToday.length * 100) : 0}% del día`} iconColor="#F59E0B" fill="#FEF3C7" fillTo="#FDE68A"
+        active={kpiFilter === "progreso"} onClick={() => { setKpiFilter(kpiFilter === "progreso" ? "all" : "progreso"); setView("dia"); }} tooltip="Solo eventos en progreso" />
+      <KpiCal icon={Activity}      val={pendingToday}       label="Pendientes"  sub={`${eventsToday.length > 0 ? Math.round(pendingToday / eventsToday.length * 100) : 0}% del día`}  iconColor="#3B82F6" fill="#DBEAFE" fillTo="#BFDBFE"
+        active={kpiFilter === "pendiente"} onClick={() => { setKpiFilter(kpiFilter === "pendiente" ? "all" : "pendiente"); setView("dia"); }} tooltip="Solo eventos pendientes" />
+      <KpiCal icon={AlertTriangle} val={retrasados}         label="Retrasados"  sub={retrasados === 0 ? "¡Excelente!" : "Requieren atención"} iconColor={retrasados === 0 ? "#10B981" : "#EF4444"} fill={retrasados === 0 ? "#DCFCE7" : "#FEE2E2"} fillTo={retrasados === 0 ? "#A7F3D0" : "#FECACA"}
+        active={kpiFilter === "retrasado"} onClick={() => { setKpiFilter(kpiFilter === "retrasado" ? "all" : "retrasado"); setView("dia"); }} tooltip="Solo eventos retrasados" />
+      <KpiCal icon={MapPin}        val="24 km"              label="Distancia estimada" sub="Ruta optimizada" iconColor="#10B981" fill="#DCFCE7" fillTo="#A7F3D0"
+        onClick={() => setRouteModal(true)} tooltip="Ver optimización de ruta del día" />
+    </div>
+
+    {/* GRID PRINCIPAL: técnicos + rutas + agenda */}
+    <div data-cal-grid style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, alignItems: "flex-start" }}>
+      {/* COLUMNA IZQUIERDA: Técnicos + Rutas */}
+      <div data-cal-sidebar style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Técnicos */}
+        <div style={{ background: C.w, borderRadius: 16, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Técnicos</h3>
+            <span style={{ color: C.g400, fontSize: 12 }}>▾</span>
+          </div>
+          {TECHS.map(name => {
+            const u = (users || UI || []).find(x => x.name === name);
+            const r = u ? ROLES[u.role] : null;
+            const count = ev.filter(e => e.tech === name && e.date === currentISO).length;
+            const active = selectedTechs.has(name);
+            return (
+              <div key={name} onClick={() => toggleTech(name)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", cursor: "pointer", borderRadius: 8, transition: "background .15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <TechAv name={name} size={36} allowUpload />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{name}</div>
+                  <div style={{ fontSize: 10, color: C.g500 }}>{r?.label || "Técnico"}</div>
+                  <div style={{ fontSize: 10, color: "#10B981", marginTop: 2 }}>● {count} eventos</div>
+                </div>
+                <div style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${active ? "#10B981" : C.g300}`, background: active ? "#10B981" : C.w, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {active && <Check size={11} color={C.w} strokeWidth={3} />}
+                </div>
+              </div>
+            );
+          })}
+          <button style={{ marginTop: 10, padding: "9px 12px", borderRadius: 9, border: `1px dashed ${C.g300}`, background: "transparent", color: C.g500, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.purple; e.currentTarget.style.color = C.purple; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.g300; e.currentTarget.style.color = C.g500; }}>
+            <Plus size={12} /> Asignar técnico
+          </button>
+        </div>
+
+        {/* Rutas del día */}
+        <div style={{ background: C.w, borderRadius: 16, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Rutas del día</h3>
+            <button style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Ver mapa</button>
+          </div>
+          {/* Mock map */}
+          <div style={{ height: 110, borderRadius: 10, background: `linear-gradient(135deg, #DBEAFE, #DCFCE7, #FEF3C7)`, position: "relative", marginBottom: 12, overflow: "hidden", border: `1px solid ${C.g100}` }}>
+            <svg width="100%" height="100%" viewBox="0 0 230 110" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+              {/* Carreteras simuladas */}
+              <path d="M 20 90 Q 80 40 120 60 T 210 30" stroke="#94A3B8" strokeWidth="2" fill="none" opacity="0.4" />
+              <path d="M 20 60 Q 60 20 110 35 T 200 80" stroke="#94A3B8" strokeWidth="2" fill="none" opacity="0.3" />
+              {/* Pins numerados */}
+              <g>
+                <circle cx="40" cy="80" r="11" fill="#A855F7" />
+                <text x="40" y="84" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">1</text>
+              </g>
+              <g>
+                <circle cx="120" cy="50" r="11" fill="#A855F7" />
+                <text x="120" y="54" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">2</text>
+              </g>
+              <g>
+                <circle cx="195" cy="35" r="11" fill="#A855F7" />
+                <text x="195" y="39" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">3</text>
+              </g>
+              {/* Línea conectora */}
+              <path d="M 40 80 L 120 50 L 195 35" stroke="#A855F7" strokeWidth="2" strokeDasharray="4 3" fill="none" opacity="0.7" />
+            </svg>
+          </div>
+          <div style={{ fontSize: 11, color: C.g600 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: `1px solid ${C.g100}` }}><span>Distancia total</span><span style={{ fontWeight: 700, color: C.navy }}>24 km</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: `1px solid ${C.g100}` }}><span>Tiempo estimado</span><span style={{ fontWeight: 700, color: C.navy }}>2h 15m</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0" }}><span>Visitas programadas</span><span style={{ fontWeight: 700, color: C.navy }}>{eventsToday.length || 5}</span></div>
+          </div>
+          <button onClick={() => setRouteModal(true)} style={{ marginTop: 10, width: "100%", padding: "9px 12px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: `0 4px 12px rgba(124,58,237,0.3)` }}>
+            <span>✦</span> Optimizar ruta
+          </button>
+        </div>
+      </div>
+
+      {/* COLUMNA DERECHA: Time grid (vista día) */}
+      {view === "dia" && (
+        <>
+        {/* VISTA MÓVIL: lista cronológica simple */}
+        <div data-cal-mobile-list style={{ display: "none", background: C.w, borderRadius: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, overflow: "hidden" }}>
+          <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.g100}`, fontSize: 12, fontWeight: 700, color: C.navy, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Agenda del día{kpiFilter !== "all" ? ` · ${kpiFilter}` : ""}</span>
+            <span style={{ fontSize: 10, color: C.g500, fontWeight: 600 }}>{dayEvents.length} eventos</span>
+          </div>
+          {kpiFilter !== "all" && (
+            <div style={{ padding: "8px 14px", background: "#F5F3FF", borderBottom: `1px solid ${C.g100}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: C.purple, fontWeight: 600 }}>Filtro activo: {kpiFilter}</span>
+              <button onClick={() => setKpiFilter("all")} style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>✕ Quitar filtro</button>
+            </div>
+          )}
+          {dayEvents.length === 0 && (
+            <div style={{ padding: 24, textAlign: "center", color: C.g400, fontSize: 12 }}>Sin eventos programados</div>
+          )}
+          {[...dayEvents].sort((a, b) => (a.time || "").localeCompare(b.time || "")).map(e => {
+            const cl = d.clients.find(c => c.id === e.cid);
+            const color = tc[e.type] || "#7C3AED";
+            const bg = tBg[e.type] || "#F3E8FF";
+            return (
+              <div key={e.id} onClick={() => setSelEv(e)} style={{ padding: "12px 14px", borderBottom: `1px solid ${C.g100}`, cursor: "pointer", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ minWidth: 56, fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: C.navy, paddingTop: 2 }}>{e.time}</div>
+                <div style={{ flex: 1, minWidth: 0, background: bg, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{e.title}</div>
+                  <div style={{ fontSize: 11, color: C.g500, marginTop: 3 }}>📍 {cl?.name || "—"}</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 9.5, padding: "2px 8px", borderRadius: 10, background: color, color: C.w, fontWeight: 700, textTransform: "capitalize" }}>{e.type}</span>
+                    {e.tech && <span style={{ fontSize: 10, color: C.g600, fontWeight: 600 }}>👤 {e.tech}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* VISTA DESKTOP/TABLET: grid de técnicos */}
+        <div data-cal-timegrid style={{ background: C.w, borderRadius: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, overflow: "hidden" }}>
+          {/* Header de técnicos seleccionados */}
+          <div style={{ display: "grid", gridTemplateColumns: `60px repeat(${[...selectedTechs].length || 1}, 1fr)`, borderBottom: `1px solid ${C.g100}` }}>
+            <div />
+            {[...selectedTechs].map(name => (
+              <div key={name} style={{ padding: "12px", borderLeft: `1px solid ${C.g100}`, display: "flex", alignItems: "center", gap: 8 }}>
+                <TechAv name={name} size={28} />
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{name}</div>
+                  <div style={{ fontSize: 10, color: C.g500 }}>Técnico</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Time slots 08:00 - 18:00 */}
+          <div style={{ position: "relative" }}>
+            {Array.from({ length: 11 }, (_, i) => 8 + i).map((hour, hi) => {
+              const hourStr = String(hour).padStart(2, "0") + ":00";
+              return (
+                <div key={hour} style={{ display: "grid", gridTemplateColumns: `60px repeat(${[...selectedTechs].length || 1}, 1fr)`, borderBottom: `1px solid ${C.g100}`, minHeight: 60 }}>
+                  <div style={{ padding: "8px 8px", fontSize: 10, color: C.g400, fontFamily: "monospace", textAlign: "right", borderRight: `1px solid ${C.g100}` }}>{hourStr}</div>
+                  {[...selectedTechs].map(techName => {
+                    const evs = dayEvents.filter(e => e.tech === techName && e.time && e.time.startsWith(String(hour).padStart(2, "0")));
+                    const cellKey = `${techName}|${String(hour).padStart(2, "0")}:00`;
+                    const isOverHere = dragOverCell === cellKey;
+                    return (
+                      <div key={techName}
+                        onDragOver={e => { e.preventDefault(); setDragOverCell(cellKey); }}
+                        onDragLeave={() => setDragOverCell(null)}
+                        onDrop={e => {
+                          e.preventDefault();
+                          if (dragEvId) moveEvent(dragEvId, { tech: techName, time: String(hour).padStart(2, "0") + ":00" });
+                          setDragEvId(null); setDragOverCell(null);
+                        }}
+                        style={{
+                          borderLeft: `1px solid ${C.g100}`,
+                          padding: "4px",
+                          position: "relative",
+                          minHeight: 60,
+                          background: isOverHere ? `${tc[Object.keys(tc)[0]]}10` : "transparent",
+                          outline: isOverHere ? `2px dashed ${C.purple}` : "none",
+                          outlineOffset: -2,
+                          transition: "background .12s, outline .12s"
+                        }}>
+                        {evs.map(e => {
+                          const cl = d.clients.find(c => c.id === e.cid);
+                          const color = tc[e.type] || "#7C3AED";
+                          const bg = tBg[e.type] || "#F3E8FF";
+                          const isDragging = dragEvId === e.id;
+                          return (
+                            <div key={e.id}
+                              draggable
+                              onDragStart={ev => { setDragEvId(e.id); ev.dataTransfer.effectAllowed = "move"; }}
+                              onDragEnd={() => { setDragEvId(null); setDragOverCell(null); }}
+                              onClick={() => setSelEv(e)}
+                              title="Arrastra a otra hora o técnico · Clic para detalle"
+                              style={{
+                                background: bg,
+                                borderLeft: `3px solid ${color}`,
+                                borderRadius: 8,
+                                padding: "8px 10px",
+                                cursor: isDragging ? "grabbing" : "grab",
+                                marginBottom: 4,
+                                transition: "all .15s",
+                                opacity: isDragging ? 0.4 : 1,
+                                transform: isDragging ? "rotate(-2deg) scale(0.97)" : "none"
+                              }}
+                              onMouseEnter={el => { if (!isDragging) { el.currentTarget.style.transform = "translateY(-1px)"; el.currentTarget.style.boxShadow = `0 4px 10px -2px ${color}40`; } }}
+                              onMouseLeave={el => { if (!isDragging) { el.currentTarget.style.transform = "translateY(0)"; el.currentTarget.style.boxShadow = "none"; } }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                                <div style={{ fontSize: 10, color, fontWeight: 700 }}>{e.time} - {(() => { const [h, m] = (e.time || "00:00").split(":"); return String((parseInt(h) + 1) % 24).padStart(2, "0") + ":" + (m || "00"); })()}</div>
+                                <span style={{ color: C.g300, fontSize: 9, fontFamily: "monospace" }}>⋮⋮</span>
+                              </div>
+                              <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy, marginTop: 2 }}>{e.title}</div>
+                              {cl && <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><MapPin size={9} /> {cl.name}</div>}
+                              <span style={{ display: "inline-block", marginTop: 5, padding: "2px 7px", borderRadius: 8, background: color, color: C.w, fontSize: 9, fontWeight: 700 }}>{tLabel[e.type] || e.type}</span>
+                            </div>
+                          );
+                        })}
+                        {evs.length === 0 && isOverHere && (
+                          <div style={{ position: "absolute", inset: 4, display: "flex", alignItems: "center", justifyContent: "center", color: C.purple, fontSize: 10, fontWeight: 700, pointerEvents: "none" }}>Soltar aquí</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+            {/* Línea de hora actual (si es hoy) */}
+            {currentISO === todayISO && (() => {
+              const now = new Date();
+              const hour = now.getHours();
+              if (hour < 8 || hour > 18) return null;
+              const minutes = now.getMinutes();
+              const offset = (hour - 8) * 60 + (minutes / 60) * 60;
+              return (
+                <div style={{ position: "absolute", left: 60, right: 0, top: offset, height: 2, background: "#EF4444", zIndex: 5, pointerEvents: "none" }}>
+                  <div style={{ position: "absolute", left: -8, top: -5, padding: "2px 7px", background: "#EF4444", color: C.w, fontSize: 9.5, fontWeight: 700, borderRadius: 5, fontFamily: "monospace" }}>{String(hour).padStart(2, "0")}:{String(minutes).padStart(2, "0")}</div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+        </>
+      )}
+
+      {/* Vista Semana — agrupado por día con drop zones */}
+      {view === "semana" && (() => {
+        // Construye 7 días desde el inicio de la semana (lunes) de currentDate
+        const weekStart = new Date(currentDate);
+        const dow = (weekStart.getDay() + 6) % 7; // lunes = 0
+        weekStart.setDate(weekStart.getDate() - dow);
+        const days = Array.from({ length: 7 }, (_, i) => {
+          const d2 = new Date(weekStart); d2.setDate(d2.getDate() + i);
+          return { date: d2.toISOString().slice(0, 10), label: d2.toLocaleDateString("es-CO", { weekday: "short", day: "numeric" }) };
+        });
+        return (
+          <div style={{ background: C.w, borderRadius: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, padding: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 12 }}>Eventos de la semana</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+              {days.map(day => {
+                const dayEv = visibleEvents.filter(e => e.date === day.date).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+                const isToday2 = day.date === todayISO;
+                const isOver = dragOverCell === `wk|${day.date}`;
+                return (
+                  <div key={day.date}
+                    onDragOver={e => { e.preventDefault(); setDragOverCell(`wk|${day.date}`); }}
+                    onDragLeave={() => setDragOverCell(null)}
+                    onDrop={e => { e.preventDefault(); if (dragEvId) moveEvent(dragEvId, { date: day.date }); setDragEvId(null); setDragOverCell(null); }}
+                    style={{ minHeight: 120, padding: 8, borderRadius: 10, border: `1px solid ${isToday2 ? C.purple + "40" : C.g100}`, background: isOver ? `${C.purple}10` : (isToday2 ? `${C.purple}05` : C.w), outline: isOver ? `2px dashed ${C.purple}` : "none", outlineOffset: -2, transition: "all .12s" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: isToday2 ? C.purple : C.g500, textTransform: "capitalize", marginBottom: 6, textAlign: "center" }}>{day.label}</div>
+                    {dayEv.map(e => {
+                      const color = tc[e.type] || "#7C3AED";
+                      const isDragging = dragEvId === e.id;
+                      return (
+                        <div key={e.id}
+                          draggable
+                          onDragStart={ev => { setDragEvId(e.id); ev.dataTransfer.effectAllowed = "move"; }}
+                          onDragEnd={() => { setDragEvId(null); setDragOverCell(null); }}
+                          onClick={() => setSelEv(e)}
+                          title="Arrastra a otro día · Clic para detalle"
+                          style={{ background: tBg[e.type] || "#F3E8FF", borderLeft: `3px solid ${color}`, borderRadius: 6, padding: "5px 7px", marginBottom: 4, cursor: isDragging ? "grabbing" : "grab", fontSize: 10, opacity: isDragging ? 0.4 : 1 }}>
+                          <div style={{ fontWeight: 700, color, fontSize: 9 }}>{e.time}</div>
+                          <div style={{ fontWeight: 700, color: C.navy, fontSize: 10.5 }}>{e.title}</div>
+                          <div style={{ fontSize: 9, color: C.g500 }}>{e.tech}</div>
+                        </div>
+                      );
+                    })}
+                    {dayEv.length === 0 && isOver && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.purple, fontSize: 10, fontWeight: 700, padding: 12 }}>Soltar aquí</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Vista Mes - grid de calendario completo */}
+      {view === "mes" && (() => {
+        // Build calendar grid for currentDate's month
+        const ms = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const me = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        const startDow = (ms.getDay() + 6) % 7;
+        const cells = [];
+        for (let i = 0; i < startDow; i++) cells.push(null);
+        for (let i = 1; i <= me.getDate(); i++) {
+          const d2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+          cells.push(d2.toISOString().slice(0, 10));
+        }
+        return (
+          <div style={{ background: C.w, borderRadius: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, padding: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 12, textTransform: "capitalize" }}>{monthLabel}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, fontSize: 10, color: C.g400, fontWeight: 700, marginBottom: 4 }}>
+              {["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"].map(d2 => <div key={d2} style={{ textAlign: "center", padding: "6px 0" }}>{d2}</div>)}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+              {cells.map((iso, i) => {
+                if (!iso) return <div key={i} />;
+                const dayEv = visibleEvents.filter(e => e.date === iso);
+                const isToday2 = iso === todayISO;
+                const isOver = dragOverCell === `mes|${iso}`;
+                const dayNum = new Date(iso + "T12:00").getDate();
+                return (
+                  <div key={i}
+                    onDragOver={e => { e.preventDefault(); setDragOverCell(`mes|${iso}`); }}
+                    onDragLeave={() => setDragOverCell(null)}
+                    onDrop={e => { e.preventDefault(); if (dragEvId) moveEvent(dragEvId, { date: iso }); setDragEvId(null); setDragOverCell(null); }}
+                    style={{ minHeight: 88, padding: 5, borderRadius: 8, border: `1px solid ${isToday2 ? C.purple + "40" : C.g100}`, background: isOver ? `${C.purple}10` : (isToday2 ? `${C.purple}05` : C.w), outline: isOver ? `2px dashed ${C.purple}` : "none", outlineOffset: -2, transition: "all .12s", cursor: "pointer" }}
+                    onClick={() => { setCurrentDate(new Date(iso + "T12:00")); setView("dia"); }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: isToday2 ? C.purple : C.g600, marginBottom: 3 }}>{dayNum}</div>
+                    {dayEv.slice(0, 3).map(e => {
+                      const color = tc[e.type] || "#7C3AED";
+                      const isDragging = dragEvId === e.id;
+                      return (
+                        <div key={e.id}
+                          draggable
+                          onDragStart={ev => { ev.stopPropagation(); setDragEvId(e.id); ev.dataTransfer.effectAllowed = "move"; }}
+                          onDragEnd={() => { setDragEvId(null); setDragOverCell(null); }}
+                          onClick={ev => { ev.stopPropagation(); setSelEv(e); }}
+                          title="Arrastra a otro día · Clic para detalle"
+                          style={{ background: tBg[e.type] || "#F3E8FF", borderLeft: `2px solid ${color}`, borderRadius: 4, padding: "2px 5px", marginBottom: 2, cursor: isDragging ? "grabbing" : "grab", fontSize: 9, opacity: isDragging ? 0.4 : 1, color: C.navy, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {e.time?.slice(0, 5)} {e.title}
+                        </div>
+                      );
+                    })}
+                    {dayEv.length > 3 && <div style={{ fontSize: 9, color: C.blue, fontWeight: 600, marginTop: 2 }}>+{dayEv.length - 3} más</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+
+    {/* BANNER INFERIOR: Conectar calendario */}
+    <div style={{ marginTop: 18, padding: "14px 18px", background: C.w, borderRadius: 14, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#DBEAFE", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Bell size={16} strokeWidth={1.85} />
+        </div>
+        <span style={{ fontSize: 12, color: C.g600 }}>Conecta tu calendario personal (Google / Outlook) para sincronizar eventos automáticamente.</span>
+      </div>
+      <button onClick={() => setCalConnModal(true)} style={{ padding: "9px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}
+        onMouseEnter={el => { el.currentTarget.style.borderColor = C.blue; el.currentTarget.style.color = C.blue; }}
+        onMouseLeave={el => { el.currentTarget.style.borderColor = C.g200; el.currentTarget.style.color = C.g600; }}>
+        <Calendar size={13} /> Conectar calendario
+      </button>
+    </div>
+
+    {/* ========== FIN COLUMNA PRINCIPAL ========== */}
+    </div>
+
+    {/* ============ SIDEBAR DERECHO ============ */}
+    <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Calendario mini */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Calendario mini</h3>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <button onClick={() => { const d2 = new Date(currentDate); d2.setMonth(d2.getMonth() - 1); setCurrentDate(d2); }} style={{ width: 24, height: 24, border: "none", background: "transparent", color: C.g500, cursor: "pointer", fontSize: 14, borderRadius: 6 }}>‹</button>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.navy, textTransform: "capitalize" }}>{monthLabel}</span>
+          <button onClick={() => { const d2 = new Date(currentDate); d2.setMonth(d2.getMonth() + 1); setCurrentDate(d2); }} style={{ width: 24, height: 24, border: "none", background: "transparent", color: C.g500, cursor: "pointer", fontSize: 14, borderRadius: 6 }}>›</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, fontSize: 9.5, color: C.g400, fontWeight: 700, textAlign: "center", marginBottom: 4 }}>
+          {["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"].map(d2 => <div key={d2}>{d2}</div>)}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+          {monthGrid.map((day, i) => {
+            if (day === null) return <div key={i} />;
+            const isCurrent = day === currentDate.getDate();
+            const isTodayMini = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear();
+            return (
+              <button key={i} onClick={() => { const d2 = new Date(currentDate); d2.setDate(day); setCurrentDate(d2); }} style={{
+                aspectRatio: "1",
+                border: "none",
+                borderRadius: 6,
+                background: isCurrent ? C.purple : "transparent",
+                color: isCurrent ? C.w : isTodayMini ? C.purple : C.g600,
+                fontSize: 11,
+                fontWeight: isCurrent || isTodayMini ? 700 : 500,
+                cursor: "pointer",
+                fontFamily: "inherit"
+              }}>{day}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tipos de evento */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: "0 0 12px" }}>Tipos de evento</h3>
+        {typeCount.map((x, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 11.5 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: C.g600 }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: tc[x.t] }} />
+              {tLabel[x.t]}
+            </span>
+            <span style={{ color: C.navy, fontWeight: 600, fontFamily: "monospace" }}>{x.count}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Próximos eventos */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Próximos eventos</h3>
+          <button style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Ver todos</button>
+        </div>
+        {(() => {
+          const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+          const list = upcoming.length > 0 ? upcoming : [
+            { date: "2026-05-15", time: "09:00", title: "Visita Técnica", tech: "Alexander Ospina", cid: d.clients[0]?.id, type: "visita" },
+            { date: "2026-05-15", time: "10:00", title: "Mantenimiento", tech: "Amanda López", cid: d.clients[1]?.id, type: "mantenimiento" },
+            { date: "2026-05-16", time: "08:30", title: "Visita Preventiva", tech: "Alexander Ospina", cid: d.clients[2]?.id, type: "visita" }
+          ];
+          return list.map((e, i) => {
+            const cl = d.clients.find(c => c.id === e.cid);
+            const dt = new Date(e.date + "T12:00");
+            const color = tc[e.type] || "#7C3AED";
+            return (
+              <div key={i} onClick={() => e.id && setSelEv(e)} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: e.id ? "pointer" : "default" }}>
+                <div style={{ width: 36, flexShrink: 0, borderRadius: 7, overflow: "hidden", border: `1px solid ${C.g200}`, background: C.w }}>
+                  <div style={{ background: color, color: C.w, fontSize: 8, fontWeight: 700, textAlign: "center", padding: "2px 0", letterSpacing: 0.5 }}>{months[dt.getMonth()]}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, textAlign: "center", padding: "3px 0 4px" }}>{dt.getDate()}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10.5, color: C.g500, fontFamily: "monospace" }}>{e.time}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{e.title}</div>
+                  <div style={{ fontSize: 10, color: C.g500 }}>{cl?.name || "—"}</div>
+                  <div style={{ fontSize: 10, color: C.g600, marginTop: 1 }}>{e.tech}</div>
+                </div>
+              </div>
+            );
+          });
+        })()}
+      </div>
+
+      {/* Insights IA */}
+      <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 18, padding: 16, border: `1px solid rgba(124,58,237,0.18)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Insights IA</h3>
+          <span style={{ fontSize: 11 }}>✦</span>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#FEF9C3", color: "#CA8A04", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>💡</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>Tu ruta está optimizada</div>
+            <div style={{ fontSize: 10.5, color: C.g500, marginTop: 3, lineHeight: 1.4 }}>Has ahorrado ~18% de tiempo comparado con rutas estándar.</div>
+          </div>
+        </div>
+        <button onClick={() => setRecsModal(true)} style={{ marginTop: 14, width: "100%", padding: "9px 12px", borderRadius: 9, border: `1px solid ${C.purple}40`, background: C.w, color: C.purple, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          Ver recomendaciones
+        </button>
+      </div>
+    </aside>
+
+    {/* ============ FIN LAYOUT ============ */}
+
+    {/* MODAL: Detalle de Evento */}
+    <Mo open={!!selEv} onClose={() => setSelEv(null)} title={selEv?.title || ""}>
+      {selEv && (() => {
+        const cl = d.clients.find(c => c.id === selEv.cid);
+        const evColor = tc[selEv.type] || C.g400;
+        const isPast = selEv.date && selEv.date < new Date().toISOString().slice(0, 10);
+        // Generar URL de Google Calendar para "Add to Calendar"
+        const startDate = selEv.date && selEv.time ? selEv.date.replace(/-/g, "") + "T" + selEv.time.replace(":", "") + "00" : "";
+        const endTime = selEv.time ? (() => { const [h, m] = selEv.time.split(":"); const endH = String((parseInt(h) + 1) % 24).padStart(2, "0"); return endH + m; })() : "";
+        const endDate = selEv.date && endTime ? selEv.date.replace(/-/g, "") + "T" + endTime + "00" : "";
+        const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(selEv.title)}&dates=${startDate}/${endDate}&details=${encodeURIComponent((cl ? `Cliente: ${cl.name}\n` : "") + `Responsable: ${selEv.tech}\n${selEv.notes || ""}`)}&location=${encodeURIComponent(cl?.city || "Medellín")}`;
+        return (
+          <div>
+            <div style={{ background: `${evColor}08`, borderRadius: 8, padding: 12, marginBottom: 12, border: `1px solid ${evColor}25` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 6 }}>
+                <Tg>{selEv.type}</Tg>
+                {isPast && <span style={{ fontSize: 9.5, fontWeight: 600, color: C.g500 }}>📍 Evento pasado</span>}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>{selEv.title}</div>
+              <div style={{ fontSize: 11, color: C.g600, marginTop: 4 }}>📅 {selEv.date} · 🕐 {selEv.time}</div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, fontSize: 11, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.g400, textTransform: "uppercase" }}>Responsable</div>
+                <div style={{ color: C.navy, fontWeight: 600, marginTop: 2 }}>👤 {selEv.tech}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.g400, textTransform: "uppercase" }}>Cliente</div>
+                {cl ? (
+                  <div onClick={() => { go && go("clients"); setSelEv(null); }} style={{ color: C.blue, fontWeight: 600, marginTop: 2, cursor: "pointer", textDecoration: "underline" }}>{cl.name}</div>
+                ) : (
+                  <div style={{ color: C.g400, fontStyle: "italic", marginTop: 2 }}>Sin cliente</div>
+                )}
+              </div>
+            </div>
+
+            {selEv.notes && (
+              <div style={{ marginBottom: 12, padding: 10, background: C.g50, borderRadius: 7, border: `1px solid ${C.g100}` }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.g400, textTransform: "uppercase", marginBottom: 3 }}>Notas</div>
+                <div style={{ fontSize: 11, color: C.g600, whiteSpace: "pre-wrap" }}>{selEv.notes}</div>
+              </div>
+            )}
+
+            {/* Botones de acción rápida */}
+            {cl && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: C.g400, textTransform: "uppercase", marginBottom: 6 }}>Contacto rápido</div>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {cl.phone && <a href={`tel:${cl.phone}`} title="Llamar" style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "5px 10px", borderRadius: 6, background: C.blue, color: C.w, fontSize: 10.5, fontWeight: 600, textDecoration: "none" }}><Phone size={11} /> Llamar</a>}
+                  {cl.wa && <a href={`https://wa.me/${cl.wa}?text=${encodeURIComponent(`Hola ${cl.contact || cl.name}, te recuerdo nuestra cita: "${selEv.title}" el ${selEv.date} a las ${selEv.time}.`)}`} target="_blank" rel="noopener noreferrer" title="WhatsApp recordatorio" style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "5px 10px", borderRadius: 6, background: "#25D366", color: C.w, fontSize: 10.5, fontWeight: 600, textDecoration: "none" }}><WAIcon size={12} /> Recordar</a>}
+                  {cl.email && <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(cl.email)}&su=${encodeURIComponent(`Recordatorio: ${selEv.title}`)}&body=${encodeURIComponent(`Hola ${cl.contact || cl.name},\n\nTe recordamos nuestra cita: "${selEv.title}" el ${selEv.date} a las ${selEv.time}.\n\nResponsable: ${selEv.tech}\n\nSaludos,\nSisteKore`)}`} target="_blank" rel="noopener noreferrer" title="Enviar recordatorio por Gmail" style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "5px 10px", borderRadius: 6, background: C.purple, color: C.w, fontSize: 10.5, fontWeight: 600, textDecoration: "none" }}><Mail size={11} /> Gmail</a>}
+                </div>
+              </div>
+            )}
+
+            {/* Add to Google Calendar */}
+            {selEv.date && selEv.time && (
+              <div style={{ marginBottom: 12 }}>
+                <a href={gcalUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 12px", borderRadius: 7, background: "#4285F4", color: C.w, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+                  📅 Agregar a Google Calendar
+                </a>
+              </div>
+            )}
+
+            {/* Eliminar */}
+            <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 10, display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => delEv(selEv.id, selEv.title)} style={{ background: "none", border: `1px solid ${C.err}40`, color: C.err, borderRadius: 6, padding: "5px 11px", fontSize: 10.5, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}><Trash2 size={11} /> Eliminar evento</button>
+            </div>
+          </div>
+        );
+      })()}
+    </Mo>
+    <Mo open={sn} onClose={() => setSN(false)} title="Nuevo Evento Operativo">
+      <Fl label="Título" req><input style={is} value={nf.title} onChange={e => snf(p => ({ ...p, title: e.target.value }))} /></Fl>
+      <Fl label="Tipo"><select style={is} value={nf.type} onChange={e => snf(p => ({ ...p, type: e.target.value }))}>
+        <option value="visita">Visita Técnica</option><option value="mantenimiento">Mantenimiento</option><option value="instalacion">Instalación</option><option value="revision">Revisión</option><option value="entrega">Entrega</option><option value="interno">Interno</option>
+      </select></Fl>
+      <Fl label="Cliente"><select style={is} value={nf.cid} onChange={e => snf(p => ({ ...p, cid: e.target.value }))}><option value="">Sin cliente</option>{d.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Fl>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Fl label="Fecha" req><input style={is} type="date" value={nf.date} onChange={e => snf(p => ({ ...p, date: e.target.value }))} /></Fl>
+        <Fl label="Hora"><input style={is} type="time" value={nf.time} onChange={e => snf(p => ({ ...p, time: e.target.value }))} /></Fl>
+      </div>
+      <Fl label="Responsable"><select style={is} value={nf.tech} onChange={e => snf(p => ({ ...p, tech: e.target.value }))}>{TECHS.map(n => <option key={n}>{n}</option>)}<option>Erika Julieth</option></select></Fl>
+      <Fl label="Notas"><textarea style={{ ...is, minHeight: 45 }} value={nf.notes} onChange={e => snf(p => ({ ...p, notes: e.target.value }))} /></Fl>
+      <Bt onClick={create} icon={Plus}>Agendar</Bt>
+    </Mo>
+
+    {/* Hidden file input para subir foto de perfil */}
+    <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} />
+
+    {/* MODAL: Optimizar ruta */}
+    <Mo open={routeModal} onClose={() => setRouteModal(false)} title="✦ Optimizar ruta del día">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid rgba(124,58,237,0.18)`, display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <MapPin size={18} strokeWidth={2} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>Ruta optimizada con IA</div>
+            <div style={{ fontSize: 11, color: C.g600, marginTop: 2 }}>El algoritmo reordena tus visitas para minimizar tiempo y kilómetros.</div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          {[
+            { label: "Distancia ahorrada", val: "~6 km",   sub: "vs ruta original",       color: "#10B981", icon: TrendingUp },
+            { label: "Tiempo ahorrado",    val: "~25 min", sub: "~18% del recorrido",     color: "#7C3AED", icon: Clock },
+            { label: "Combustible",        val: "~$8.500",  sub: "ahorro estimado",        color: "#F59E0B", icon: DollarSign },
+            { label: "Visitas",            val: `${eventsToday.length || 5}`, sub: "agendadas hoy", color: "#3B82F6", icon: Calendar }
+          ].map((s, i) => (
+            <div key={i} style={{ padding: 12, borderRadius: 10, background: `${s.color}08`, border: `1px solid ${s.color}25`, display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${s.color}20`, color: s.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <s.icon size={15} strokeWidth={1.85} />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.navy, lineHeight: 1.05 }}>{s.val}</div>
+                <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 9.5, color: s.color, fontWeight: 600 }}>{s.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Orden propuesto</div>
+          {(() => {
+            const list = dayEvents.slice(0, 5);
+            return list.length > 0 ? list.map((e, i) => {
+              const cl = d.clients.find(c => c.id === e.cid);
+              return (
+                <div key={e.id} style={{ display: "flex", gap: 10, padding: "9px 10px", borderRadius: 9, border: `1px solid ${C.g100}`, marginBottom: 6, alignItems: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.purple, color: C.w, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{e.time} · {e.title}</div>
+                    <div style={{ fontSize: 10, color: C.g500 }}>{cl?.name || "—"} · {e.tech}</div>
+                  </div>
+                  <span style={{ fontSize: 9.5, color: C.g500 }}>+{4 + i * 2} km</span>
+                </div>
+              );
+            }) : <div style={{ fontSize: 11, color: C.g400, fontStyle: "italic", textAlign: "center", padding: 12 }}>Sin eventos para el día seleccionado.</div>;
+          })()}
+        </div>
+
+        <div style={{ background: "#FEF3C7", borderRadius: 10, padding: 11, border: `1px solid #F59E0B40`, fontSize: 11, color: "#92400E", lineHeight: 1.5, marginBottom: 14 }}>
+          🚧 <strong>Próximamente</strong> — La integración con Google Maps API + apertura del navegador GPS estará lista al conectar Supabase.
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button onClick={() => setRouteModal(false)} style={{ padding: "9px 16px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+          <button onClick={() => { if (aa) aa("Aplicó ruta optimizada del día", "Calendario"); setRouteModal(false); alert("✅ Ruta optimizada aplicada (demo)."); }} style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>Aplicar ruta</button>
+        </div>
+      </div>
+    </Mo>
+
+    {/* MODAL: Ver recomendaciones IA */}
+    <Mo open={recsModal} onClose={() => setRecsModal(false)} title="✦ Recomendaciones IA del Calendario">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid rgba(124,58,237,0.18)`, display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Activity size={18} strokeWidth={2} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>Insights del día</div>
+            <div style={{ fontSize: 11, color: C.g600, marginTop: 2 }}>Recomendaciones automáticas basadas en tu agenda y rutas.</div>
+          </div>
+        </div>
+
+        {(() => {
+          const recsList = [
+            {
+              tone: "ok", icon: TrendingUp,
+              title: "Tu ruta está optimizada",
+              text: "Has ahorrado ~18% de tiempo comparado con rutas estándar.",
+              cta: "Ver mapa de ruta",
+              action: () => { setRecsModal(false); setRouteModal(true); }
+            },
+            {
+              tone: "info", icon: Calendar,
+              title: "Mejor hora para visitas técnicas: 10-11 AM",
+              text: "Históricamente el 80% de las visitas completadas exitosamente ocurren en este horario.",
+              cta: "Crear evento a las 10:00",
+              action: () => { snf({ title: "", type: "visita", cid: "", date: currentISO, time: "10:00", tech: "Erika Julieth", notes: "Sugerido por IA — mejor horario operativo" }); setRecsModal(false); setSN(true); }
+            },
+            {
+              tone: "warn", icon: AlertTriangle,
+              title: "Tienes 2 visitas en barrios opuestos",
+              text: "Considera reagendar para reducir 12 km de desplazamientos innecesarios.",
+              cta: "Aplicar ruta optimizada",
+              action: () => { setRecsModal(false); setRouteModal(true); }
+            },
+            {
+              tone: "info", icon: Users,
+              title: "Carga desigual del equipo",
+              text: `${TECHS[0]} tiene ${ev.filter(x => x.tech === TECHS[0] && x.date === currentISO).length} visitas hoy vs ${TECHS[1] || "Amanda López"} ${ev.filter(x => x.tech === (TECHS[1] || "Amanda López") && x.date === currentISO).length}. Considera redistribuir.`,
+              cta: "Ir al detalle del equipo",
+              action: () => { setRecsModal(false); if (go) go("users"); }
+            }
+          ];
+          return recsList.map((r, i) => {
+            const tones = {
+              ok:   { bg: "#D1FAE5", c: "#10B981" },
+              info: { bg: "#DBEAFE", c: "#3B82F6" },
+              warn: { bg: "#FEF3C7", c: "#F59E0B" }
+            };
+            const cfg = tones[r.tone];
+            return (
+              <div key={i} onClick={r.action} title="Clic para ejecutar la acción"
+                style={{ display: "flex", gap: 12, padding: 12, borderRadius: 10, border: `1px solid ${C.g100}`, marginBottom: 7, background: C.w, cursor: "pointer", transition: "all .15s" }}
+                onMouseEnter={el => { el.currentTarget.style.transform = "translateY(-2px)"; el.currentTarget.style.boxShadow = `0 6px 16px -2px ${cfg.c}30`; el.currentTarget.style.borderColor = `${cfg.c}40`; }}
+                onMouseLeave={el => { el.currentTarget.style.transform = "translateY(0)"; el.currentTarget.style.boxShadow = "none"; el.currentTarget.style.borderColor = C.g100; }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <r.icon size={16} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{r.title}</div>
+                  <div style={{ fontSize: 11, color: C.g600, marginTop: 3, lineHeight: 1.45 }}>{r.text}</div>
+                  <div style={{ fontSize: 11, color: cfg.c, fontWeight: 700, marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4 }}>{r.cta} →</div>
+                </div>
+              </div>
+            );
+          });
+        })()}
+
+        <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setRecsModal(false)} style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>Entendido</button>
+        </div>
+      </div>
+    </Mo>
+
+    {/* MODAL: Conectar calendario */}
+    <Mo open={calConnModal} onClose={() => setCalConnModal(false)} title="📅 Conectar calendario personal">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #DBEAFE 0%, #EDE9FE 100%)`, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid rgba(59,130,246,0.18)`, display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 6px rgba(15,23,42,0.08)" }}>
+            <Calendar size={20} color={C.blue} strokeWidth={1.85} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>Sincronización bidireccional</div>
+            <div style={{ fontSize: 11, color: C.g600, marginTop: 2 }}>Eventos que crees en SisteKore aparecen en tu calendario y viceversa.</div>
+          </div>
+        </div>
+
+        {[
+          { id: "google",   name: "Google Calendar",   desc: "Conecta tu cuenta @gmail o Workspace.",    color: "#4285F4", icon: "📅" },
+          { id: "outlook",  name: "Microsoft Outlook", desc: "Conecta Outlook 365 / Exchange.",         color: "#0078D4", icon: "📅" },
+          { id: "apple",    name: "Apple iCloud",      desc: "Conecta tu calendario de iCloud.",         color: "#1F1F1F", icon: "📅" }
+        ].map((p, i) => (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 11, border: `1px solid ${C.g200}`, marginBottom: 8 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${p.color}15`, color: p.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>{p.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.navy }}>{p.name}</div>
+              <div style={{ fontSize: 11, color: C.g500, marginTop: 2 }}>{p.desc}</div>
+            </div>
+            <button onClick={() => alert(`📅 Próximamente: OAuth con ${p.name} al conectar Supabase Auth.`)} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${p.color}40`, background: `${p.color}10`, color: p.color, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Conectar</button>
+          </div>
+        ))}
+
+        <div style={{ background: `${C.ok}10`, borderRadius: 10, padding: 12, border: `1px solid ${C.ok}30`, marginTop: 14, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.ok, marginBottom: 5, display: "flex", alignItems: "center", gap: 5 }}>
+            <CheckCircle size={13} /> Beneficios
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: C.g600, lineHeight: 1.6 }}>
+            <li>Eventos en ambos lados — sin doble agenda</li>
+            <li>Recordatorios push del calendario nativo</li>
+            <li>Disponibilidad real sin solapes</li>
+            <li>Compartir invitaciones a clientes con un clic</li>
+          </ul>
+        </div>
+
+        <div style={{ background: "#FEF3C7", borderRadius: 10, padding: 11, border: `1px solid #F59E0B40`, fontSize: 11, color: "#92400E", lineHeight: 1.5 }}>
+          🚧 <strong>Próximamente</strong> — La autenticación OAuth requiere Supabase Auth conectado. Por ahora puedes seguir agendando manualmente.
+        </div>
+
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setCalConnModal(false)} style={{ padding: "9px 18px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+        </div>
+      </div>
+    </Mo>
+  </div>;
+}
+
+/* === PAGE: KNOWLEDGE === */
+// Catálogo de íconos disponibles para artículos KB (clave = nombre, valor = componente)
+const KB_ICONS = {
+  // Redes
+  Wifi, Router, Network, Cable, Server,
+  // Impresoras
+  Printer,
+  // Equipos
+  Monitor, Laptop, Cpu, HardDrive,
+  // Cámaras
+  Cctv, Camera, Video,
+  // Seguridad
+  Shield, ShieldAlert, Lock,
+  // Procesos / Documentos
+  FileText, ClipboardList, FileCheck,
+  // Comercial
+  Briefcase, DollarSign, Handshake,
+  // Atención cliente
+  Headphones, LifeBuoy, HelpCircle,
+  // Herramientas / Otros
+  Wrench, Settings, Package, BookOpen, Tool: Wrench
+};
+
+const KB_CATS = ["Redes", "Impresoras", "Equipos", "Cámaras", "Seguridad", "Procesos", "Comercial", "Atención cliente", "Otros"];
+
+// Ícono por defecto al elegir cada categoría
+const KB_CAT_ICON = {
+  "Redes": "Wifi",
+  "Impresoras": "Printer",
+  "Equipos": "Monitor",
+  "Cámaras": "Cctv",
+  "Seguridad": "Shield",
+  "Procesos": "ClipboardList",
+  "Comercial": "Briefcase",
+  "Atención cliente": "Headphones",
+  "Otros": "BookOpen"
+};
+
+// Íconos sugeridos por categoría (para el dropdown — destaca los más relevantes)
+const KB_CAT_ICONS = {
+  "Redes": ["Wifi", "Router", "Network", "Cable", "Server"],
+  "Impresoras": ["Printer"],
+  "Equipos": ["Monitor", "Laptop", "Cpu", "HardDrive"],
+  "Cámaras": ["Cctv", "Camera", "Video"],
+  "Seguridad": ["Shield", "ShieldAlert", "Lock"],
+  "Procesos": ["ClipboardList", "FileText", "FileCheck"],
+  "Comercial": ["Briefcase", "DollarSign", "Handshake"],
+  "Atención cliente": ["Headphones", "LifeBuoy", "HelpCircle"],
+  "Otros": ["BookOpen", "FileText", "Wrench", "Settings", "Package"]
+};
+
+function PgKB({ data: d, setData: sd, aa }) {
+  const [search, ss] = useState("");
+  const [catFilter, setCatFilter] = useState("todas");
+  const [editing, setEditing] = useState(null); // null | "new" | { ...artículo }
+  const [viewing, setViewing] = useState(null); // ver detalle
+  const [form, setForm] = useState({ cat: "Redes", title: "", body: "", keywords: "", pdfUrl: "", icon: "FileText" });
+  const [iaQuery, setIaQuery] = useState("");
+  const [iaModal, setIaModal] = useState(false);
+
+  // Mapeo categoría → emoji + color (usado en chips y cards)
+  const catCfg = {
+    "Redes":             { emoji: "📡", icon: Wifi,        bg: "#DBEAFE", c: "#3B82F6" },
+    "Impresoras":        { emoji: "🖨️", icon: Printer,     bg: "#FEF3C7", c: "#F59E0B" },
+    "Equipos":           { emoji: "💻", icon: Monitor,     bg: "#EDE9FE", c: "#7C3AED" },
+    "Cámaras":           { emoji: "📹", icon: Cctv,        bg: "#FFEDD5", c: "#F97316" },
+    "Seguridad":         { emoji: "🛡️", icon: ShieldAlert, bg: "#FEE2E2", c: "#EF4444" },
+    "Procesos":          { emoji: "📋", icon: ClipboardList, bg: "#D1FAE5", c: "#10B981" },
+    "Comercial":         { emoji: "💼", icon: Briefcase,   bg: "#DCFCE7", c: "#10B981" },
+    "Atención cliente":  { emoji: "🎧", icon: Headphones,  bg: "#F1F5F9", c: "#64748B" },
+    "Otros":             { emoji: "🔧", icon: Wrench,      bg: "#F1F5F9", c: "#64748B" }
+  };
+
+  const arts = d.kb || [];
+
+  function startNew() {
+    setForm({ cat: "Redes", title: "", body: "", keywords: "", pdfUrl: "", icon: KB_CAT_ICON["Redes"] });
+    setEditing("new");
+  }
+  function startEdit(a) {
+    setForm({ cat: a.cat, title: a.title, body: a.body, keywords: a.keywords || "", pdfUrl: a.pdfUrl || "", icon: a.icon || "FileText" });
+    setEditing(a);
+  }
+  function save() {
+    if (!form.title.trim() || !form.body.trim()) { alert("Título y contenido son obligatorios"); return; }
+    const today = new Date().toISOString().slice(0, 10);
+    if (editing === "new") {
+      const newArt = { id: "K" + String(Date.now()).slice(-5), ...form, author: "Alexander Ospina", createdAt: today, updatedAt: today };
+      sd(p => ({ ...p, kb: [newArt, ...(p.kb || [])] }));
+      aa(`Creó artículo "${form.title}"`, "Base Conocimiento");
+    } else {
+      sd(p => ({ ...p, kb: (p.kb || []).map(x => x.id === editing.id ? { ...x, ...form, updatedAt: today } : x) }));
+      aa(`Editó artículo "${form.title}"`, "Base Conocimiento");
+    }
+    setEditing(null);
+  }
+  function delArt(a) {
+    if (!window.confirm(`¿Eliminar artículo "${a.title}"?`)) return;
+    sd(p => ({ ...p, kb: (p.kb || []).filter(x => x.id !== a.id) }));
+    aa(`Eliminó artículo "${a.title}"`, "Base Conocimiento");
+    setViewing(null);
+  }
+
+  // Filtrado
+  const q = search.toLowerCase().trim();
+  let visible = arts;
+  if (catFilter !== "todas") visible = visible.filter(a => a.cat === catFilter);
+  if (q) visible = visible.filter(a =>
+    a.title.toLowerCase().includes(q) ||
+    a.body.toLowerCase().includes(q) ||
+    (a.keywords || "").toLowerCase().includes(q) ||
+    a.cat.toLowerCase().includes(q)
+  );
+
+  // Top más usados ordenados por views
+  const topViewed = [...arts].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+  // Te puede interesar (3 random/recientes que no estén ya filtrados)
+  const interesting = [...arts].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "")).slice(0, 3);
+
+  return <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+    {/* ============ COLUMNA PRINCIPAL ============ */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+
+    {/* HEADER */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5, display: "flex", alignItems: "center", gap: 8 }}>
+          Centro de Conocimiento <BookOpen size={22} color={C.purple} strokeWidth={1.85} />
+        </h1>
+        <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Procedimientos, guías y soluciones para el equipo técnico</p>
+      </div>
+      <button onClick={startNew} className="kb-new-btn" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>
+        <Plus size={14} />Nuevo Artículo
+      </button>
+    </div>
+
+    {/* SEARCH BAR + Buscar con IA */}
+    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ flex: 1, minWidth: 280, position: "relative" }}>
+        <Search size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+        <input value={search} onChange={e => ss(e.target.value)} placeholder="Buscar soluciones, procedimientos, equipos, errores..." style={{ width: "100%", padding: "13px 14px 13px 40px", borderRadius: 12, border: `1px solid ${C.g200}`, fontSize: 13, color: C.navy, outline: "none", background: C.w, fontFamily: "inherit", boxSizing: "border-box", boxShadow: C.shadowCard }} />
+      </div>
+      <button onClick={() => { setIaQuery(search); setIaModal(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "12px 18px", borderRadius: 12, border: `1px solid ${C.purple}40`, background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, color: C.purple, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 4px 14px -2px rgba(124,58,237,0.18)` }}>
+        <span>✦</span> Buscar con IA
+      </button>
+    </div>
+
+    {/* CATEGORÍAS — chips grandes con conteo */}
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+      {(() => {
+        const all = ["todas", ...KB_CATS];
+        return all.map(c => {
+          const count = c === "todas" ? arts.length : arts.filter(a => a.cat === c).length;
+          const active = catFilter === c;
+          const cfg = c === "todas" ? { emoji: "📚", bg: "#DBEAFE", c: C.blue, icon: BookOpen } : (catCfg[c] || { emoji: "📄", bg: C.g100, c: C.g500, icon: FileText });
+          const Icon = cfg.icon;
+          return (
+            <button key={c} onClick={() => setCatFilter(c)} style={{
+              padding: "10px 16px", borderRadius: 12, border: `1px solid ${active ? cfg.c : C.g200}`,
+              background: active ? `${cfg.c}10` : C.w,
+              color: active ? cfg.c : C.g600,
+              fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
+              display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4,
+              minWidth: 90, transition: "all .15s",
+              boxShadow: active ? `0 4px 12px -2px ${cfg.c}25` : "none"
+            }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icon size={14} color={active ? cfg.c : C.g500} strokeWidth={1.85} />
+                <span>{c === "todas" ? "Todas" : c}</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: active ? cfg.c : C.navy }}>{count}</span>
+            </button>
+          );
+        });
+      })()}
+    </div>
+
+    {/* GRID DE ARTÍCULOS */}
+    {visible.length === 0 ? (
+      <div style={{ textAlign: "center", padding: 40, color: C.g400, background: C.w, borderRadius: 16, border: `1px dashed ${C.g300}` }}>
+        <BookOpen size={32} color={C.g300} style={{ marginBottom: 8 }} />
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{q ? `Sin resultados para "${search}"` : "Sin artículos en esta categoría"}</div>
+        <div style={{ fontSize: 11, marginTop: 4 }}>{q ? "Prueba con otra palabra clave o usa Buscar con IA" : "Crea el primer artículo con el botón de arriba"}</div>
+        <button onClick={startNew} style={{ marginTop: 14, padding: "9px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Nuevo artículo</button>
+      </div>
+    ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 14 }}>
+        {visible.map(a => {
+          const cfg = catCfg[a.cat] || { emoji: "📄", bg: C.g100, c: C.g500, icon: FileText };
+          const Icon = KB_ICONS[a.icon] || cfg.icon || FileText;
+          const previewLines = a.body.split("\n").slice(0, 4);
+          const moreCount = Math.max(a.body.split("\n").length - 4, 0);
+          return (
+            <div key={a.id} onClick={() => { setViewing(a); sd(p => ({ ...p, kb: (p.kb || []).map(x => x.id === a.id ? { ...x, views: (x.views || 0) + 1 } : x) })); }}
+              style={{ background: C.w, borderRadius: 16, border: `1px solid rgba(226,232,240,0.7)`, padding: 16, cursor: "pointer", boxShadow: C.shadowCard, transition: "all .15s", display: "flex", flexDirection: "column" }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = C.shadowHover; e.currentTarget.style.borderColor = `${cfg.c}40`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = "rgba(226,232,240,0.7)"; }}>
+              {/* Header de categoría */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon size={15} strokeWidth={1.85} />
+                </div>
+                <span style={{ fontSize: 11, color: cfg.c, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{a.cat}</span>
+              </div>
+              {/* Título */}
+              <h3 style={{ fontSize: 14.5, fontWeight: 700, color: C.navy, margin: "0 0 10px", lineHeight: 1.3 }}>{a.title}</h3>
+              {/* Lista preview */}
+              <div style={{ fontSize: 11.5, color: C.g600, lineHeight: 1.6, marginBottom: 12, flex: 1 }}>
+                {previewLines.map((line, idx) => (
+                  <div key={idx} style={{ marginBottom: 1 }}>{line}</div>
+                ))}
+                {moreCount > 0 && <div style={{ color: C.g400, marginTop: 2 }}>...</div>}
+              </div>
+              {/* Footer con conteo + CTA */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: `1px solid ${C.g100}` }}>
+                <span style={{ fontSize: 10.5, color: C.g500, fontWeight: 600 }}>{a.body.split("\n").length} pasos · {a.views || 0} vistas</span>
+                <span style={{ fontSize: 11, color: cfg.c, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>Ver artículos →</span>
+              </div>
+              {a.pdfUrl && (
+                <span style={{ marginTop: 8, fontSize: 9.5, color: "#EF4444", fontWeight: 700, background: "#FEE2E2", padding: "2px 8px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 3, alignSelf: "flex-start" }}>📄 PDF disponible</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {/* BANNER INFERIOR — ¿No encuentras lo que buscas? */}
+    <div style={{ marginTop: 18, padding: 16, background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 16, border: `1px solid rgba(124,58,237,0.18)`, boxShadow: C.shadowCard, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <HelpCircle size={20} strokeWidth={2} />
+      </div>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>¿No encuentras lo que buscas?</div>
+        <div style={{ fontSize: 11, color: C.g600, marginTop: 2 }}>Usa nuestro buscador con IA para encontrar la solución más rápida o crea un nuevo artículo.</div>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => { setIaQuery(search); setIaModal(true); }} style={{ padding: "9px 14px", borderRadius: 9, border: `1px solid ${C.purple}40`, background: C.w, color: C.purple, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span>✦</span> Buscar con IA
+        </button>
+        <button onClick={startNew} style={{ padding: "9px 14px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>
+          <Plus size={13} /> Nuevo artículo
+        </button>
+      </div>
+    </div>
+
+    {/* ========== FIN COLUMNA PRINCIPAL ========== */}
+    </div>
+
+    {/* ============ SIDEBAR DERECHO ============ */}
+    <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* + Nuevo Artículo CTA */}
+      <button onClick={startNew} style={{ padding: "12px 16px", borderRadius: 12, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>
+        <Plus size={15} /> Nuevo Artículo
+      </button>
+
+      {/* Asistente Técnico IA */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>Asistente Técnico IA</h3>
+          <span style={{ fontSize: 9, fontWeight: 700, color: C.purple, padding: "2px 8px", borderRadius: 8, background: "#F3E8FF", letterSpacing: 0.4 }}>Beta</span>
+        </div>
+        <p style={{ fontSize: 11, color: C.g500, margin: "0 0 10px" }}>Describe tu problema o duda técnica</p>
+        <textarea value={iaQuery} onChange={e => setIaQuery(e.target.value)} placeholder="Ej: No imprime mi HP, WiFi intermitente, pantalla azul, cámara no graba..." style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 9, border: `1px solid ${C.g200}`, background: C.g50, fontSize: 11.5, color: C.navy, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+        <button onClick={() => setIaModal(true)} disabled={!iaQuery.trim()} style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 9, border: "none", background: iaQuery.trim() ? `linear-gradient(135deg, ${C.purple}, ${C.blue})` : C.g200, color: iaQuery.trim() ? C.w : C.g400, fontSize: 12, fontWeight: 700, cursor: iaQuery.trim() ? "pointer" : "not-allowed", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: iaQuery.trim() ? `0 4px 12px rgba(124,58,237,0.3)` : "none" }}>
+          <Send size={13} /> Preguntar
+        </button>
+      </div>
+
+      {/* Te puede interesar */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: "0 0 12px" }}>Te puede interesar</h3>
+        {interesting.map((a, i) => {
+          const cfg = catCfg[a.cat] || { bg: C.g100, c: C.g500, icon: FileText };
+          const Icon = KB_ICONS[a.icon] || cfg.icon || FileText;
+          return (
+            <div key={a.id} onClick={() => setViewing(a)} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: "pointer", alignItems: "flex-start" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={14} strokeWidth={1.85} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy, lineHeight: 1.3 }}>{a.title}</div>
+                <span style={{ display: "inline-block", marginTop: 4, padding: "2px 7px", borderRadius: 8, background: cfg.bg, color: cfg.c, fontSize: 9, fontWeight: 700 }}>{a.cat}</span>
+                <div style={{ fontSize: 10.5, color: C.blue, fontWeight: 600, marginTop: 5 }}>Ver guía →</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Artículos más usados */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: "0 0 12px" }}>Artículos más usados</h3>
+        {topViewed.map((a, i) => (
+          <div key={a.id} onClick={() => setViewing(a)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: "pointer" }}
+            onMouseEnter={e => e.currentTarget.style.background = "#FAFBFD"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 10, color: C.g400, fontWeight: 700, minWidth: 18, fontFamily: "monospace" }}>{String(i + 1).padStart(2, "0")}</span>
+              <span style={{ fontSize: 11.5, color: C.navy, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+            </div>
+            <span style={{ fontSize: 10.5, color: C.g500, display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+              <Eye size={11} /> {a.views >= 1000 ? `${(a.views / 1000).toFixed(1)}k` : a.views}
+            </span>
+          </div>
+        ))}
+        <div style={{ borderTop: `1px solid ${C.g100}`, paddingTop: 10, marginTop: 6 }}>
+          <button onClick={() => setCatFilter("todas")} style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver todos los artículos →</button>
+        </div>
+      </div>
+    </aside>
+
+    {/* ============ FIN LAYOUT ============ */}
+
+    {/* MODAL: Asistente IA respuesta — matching inteligente con scoring + guion de pasos */}
+    <Mo open={iaModal} onClose={() => setIaModal(false)} title="✦ Asistente Técnico IA">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 14, border: `1px solid rgba(124,58,237,0.18)`, display: "flex", gap: 12, alignItems: "center" }}>
+          <EddyIcon size={42} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.purple, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>Pregunta del técnico</div>
+            <div style={{ fontSize: 12.5, color: C.navy, fontStyle: "italic" }}>"{iaQuery || "Sin pregunta"}"</div>
+          </div>
+        </div>
+
+        {(() => {
+          // Normalizar query: minúsculas, sin acentos, sin puntuación
+          const norm = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w\s]/g, " ").trim();
+          const q = norm(iaQuery);
+          if (!q) {
+            return (
+              <div style={{ padding: 16, background: "#FEF3C7", borderRadius: 10, border: `1px solid #F59E0B40`, fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                Escribe tu pregunta o problema técnico en el cuadro del Asistente. Ej: "no imprime mi HP", "wifi intermitente", "pantalla azul".
+              </div>
+            );
+          }
+          // Extraer palabras significativas (>2 chars, sin stopwords)
+          const STOP = new Set(["como", "para", "con", "que", "del", "los", "las", "una", "uno", "por", "muy", "mas", "mis", "mi", "el", "la", "de", "en", "se", "no", "es", "tu", "te", "yo", "al", "lo"]);
+          const queryWords = q.split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+          // Scoring: cuenta cuántas palabras del query aparecen en cada artículo
+          const scored = arts.map(a => {
+            const haystack = norm(`${a.title} ${a.body} ${a.keywords || ""} ${a.cat}`);
+            let score = 0;
+            queryWords.forEach(w => {
+              if (haystack.includes(w)) score += 1;
+              // Bonus si está en el título
+              if (norm(a.title).includes(w)) score += 2;
+              // Bonus si está en keywords
+              if (norm(a.keywords || "").includes(w)) score += 1;
+            });
+            return { a, score };
+          }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+
+          // Si hay matches, mostrar respuesta del asistente + artículos
+          if (scored.length > 0) {
+            const top = scored[0].a;
+            const cfg = catCfg[top.cat] || { bg: C.g100, c: C.g500, icon: FileText };
+            return (
+              <div>
+                {/* Respuesta principal con pasos del top match */}
+                <div style={{ padding: 14, background: `${cfg.c}08`, borderRadius: 11, border: `1px solid ${cfg.c}30`, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: cfg.c, marginBottom: 8, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    <span>✦</span> Respuesta sugerida (basada en: {top.title})
+                  </div>
+                  <div style={{ fontSize: 12, color: C.navy, lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                    {top.body.split("\n").slice(0, 6).join("\n")}
+                  </div>
+                  <button onClick={() => { setIaModal(false); setViewing(top); }} style={{ marginTop: 10, padding: "7px 12px", borderRadius: 7, border: `1px solid ${cfg.c}40`, background: C.w, color: cfg.c, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    Ver guía completa →
+                  </button>
+                </div>
+
+                {/* Otros artículos relacionados */}
+                {scored.length > 1 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Otros artículos que pueden ayudarte ({scored.length - 1})</div>
+                    {scored.slice(1).map(({ a }) => {
+                      const cfg2 = catCfg[a.cat] || { bg: C.g100, c: C.g500, icon: FileText };
+                      const Icon = KB_ICONS[a.icon] || cfg2.icon || FileText;
+                      return (
+                        <div key={a.id} onClick={() => { setIaModal(false); setViewing(a); }}
+                          style={{ display: "flex", gap: 10, padding: 10, borderRadius: 10, border: `1px solid ${C.g200}`, marginBottom: 6, cursor: "pointer", background: C.w, transition: "all .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = cfg2.c; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.transform = "translateY(0)"; }}>
+                          <div style={{ width: 30, height: 30, borderRadius: 7, background: cfg2.bg, color: cfg2.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Icon size={13} strokeWidth={1.85} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{a.title}</div>
+                            <div style={{ fontSize: 10, color: C.g500, marginTop: 2 }}>{a.cat} · {a.views || 0} vistas</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* Aviso de escalamiento */}
+                <div style={{ marginTop: 14, padding: 11, background: "#FEF3C7", borderRadius: 9, border: `1px solid #F59E0B40`, fontSize: 10.5, color: "#92400E", lineHeight: 1.5 }}>
+                  💡 <strong>¿Sigue sin funcionar?</strong> Antes de acudir a Alexander: (1) Documenta los pasos que ya intentaste, (2) Toma fotos del error, (3) Anota la versión exacta del software/equipo, (4) Solo entonces escala vía botón SOS del ticket.
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                  <button onClick={() => setIaModal(false)} style={{ padding: "9px 16px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+                  <button onClick={() => { setIaModal(false); startNew(); setForm(p => ({ ...p, title: iaQuery, body: "Documenta aquí los pasos que funcionaron para resolver:\n\n1. \n2. \n3. " })); }} style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Documentar solución</button>
+                </div>
+              </div>
+            );
+          }
+
+          // Sin matches → guion de troubleshooting genérico + sugerencias
+          return (
+            <div>
+              <div style={{ padding: 14, background: `${C.purple}08`, borderRadius: 11, border: `1px solid ${C.purple}25`, marginBottom: 14 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.purple, marginBottom: 8, display: "flex", alignItems: "center", gap: 5, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  <span>✦</span> Guion estándar SisteKore — Antes de escalar
+                </div>
+                <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: C.navy, lineHeight: 1.7 }}>
+                  <li><strong>Reproduce el problema</strong> — confirma que sucede al menos 2 veces seguidas</li>
+                  <li><strong>Aísla el componente</strong> — ¿es el equipo, la red, el software o el usuario?</li>
+                  <li><strong>Reinicio mínimo</strong> — apaga 60 seg y vuelve a probar</li>
+                  <li><strong>Revisa logs</strong> — Eventos de Windows / journalctl / consola del software</li>
+                  <li><strong>Documenta lo intentado</strong> — fecha, paso, resultado</li>
+                  <li><strong>Solo entonces</strong> — usa el botón <strong style={{ color: C.err }}>🆘 SOS</strong> del ticket para llamar a Alexander con la info completa</li>
+                </ol>
+              </div>
+
+              <div style={{ padding: 12, background: "#FEF3C7", borderRadius: 10, border: `1px solid #F59E0B40`, marginBottom: 14, fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                💡 <strong>No encontré un artículo exacto.</strong> Prueba con palabras más técnicas: <em>BSOD, ransomware, RJ45, IP fija, DNS, gateway, ARP, ping, VLAN</em>...
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button onClick={() => setIaModal(false)} style={{ padding: "9px 16px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+                <button onClick={() => { setIaModal(false); startNew(); setForm(p => ({ ...p, title: iaQuery, body: "Documenta aquí los pasos que funcionaron:\n\n1. \n2. \n3. " })); }} style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Crear artículo</button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </Mo>
+
+    {/* MODAL: Ver artículo */}
+    <Mo open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || ""}>
+      {viewing && (() => {
+        const Icon = KB_ICONS[viewing.icon] || FileText;
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.g100}` }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: `${C.navy}12`, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon size={18} color={C.navy} /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: C.g400, textTransform: "uppercase" }}>{viewing.cat}</div>
+                <div style={{ fontSize: 9, color: C.g500 }}>Por {viewing.author} · Actualizado {viewing.updatedAt}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: C.navy, lineHeight: 1.7, whiteSpace: "pre-line", padding: "8px 0" }}>{viewing.body}</div>
+            {viewing.keywords && <div style={{ marginTop: 10, padding: "7px 10px", background: C.g50, borderRadius: 6, fontSize: 10, color: C.g500 }}>🏷️ <strong>Palabras clave:</strong> {viewing.keywords}</div>}
+            {viewing.pdfUrl && (
+              <a href={viewing.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, padding: "8px 14px", background: C.err, color: C.w, borderRadius: 7, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                📄 Abrir PDF en pestaña nueva
+              </a>
+            )}
+            <div style={{ display: "flex", gap: 6, marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.g100}` }}>
+              <Bt small v="blue" icon={Edit3} onClick={() => { setViewing(null); startEdit(viewing); }}>Editar</Bt>
+              <button onClick={() => delArt(viewing)} style={{ background: "none", border: `1px solid ${C.err}40`, color: C.err, borderRadius: 6, padding: "5px 10px", fontSize: 10.5, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "inherit" }}><Trash2 size={11} />Eliminar</button>
+            </div>
+          </div>
+        );
+      })()}
+    </Mo>
+
+    {/* MODAL: Crear / Editar artículo */}
+    <Mo open={!!editing} onClose={() => setEditing(null)} title={editing === "new" ? "Nuevo Artículo" : `Editar: ${editing?.title || ""}`}>
+      {editing && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+            <Fl label="Categoría" req>
+              <select style={is} value={form.cat} onChange={e => {
+                const newCat = e.target.value;
+                setForm(p => ({ ...p, cat: newCat, icon: KB_CAT_ICON[newCat] || p.icon }));
+              }}>
+                {KB_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Fl>
+            <Fl label="Icono (sugerido para esta categoría)">
+              <select style={is} value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))}>
+                <optgroup label={`Sugeridos para ${form.cat}`}>
+                  {(KB_CAT_ICONS[form.cat] || []).map(k => <option key={k} value={k}>{k}</option>)}
+                </optgroup>
+                <optgroup label="Todos los íconos">
+                  {Object.keys(KB_ICONS).filter(k => k !== "Tool").map(k => <option key={k} value={k}>{k}</option>)}
+                </optgroup>
+              </select>
+            </Fl>
+          </div>
+          {/* Vista previa del ícono seleccionado */}
+          {(() => {
+            const Icon = KB_ICONS[form.icon] || FileText;
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: C.g50, borderRadius: 7, marginBottom: 9, border: `1px solid ${C.g100}` }}>
+                <div style={{ width: 36, height: 36, borderRadius: 7, background: `${C.navy}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon size={18} color={C.navy} />
+                </div>
+                <div style={{ fontSize: 11, color: C.g500 }}>
+                  <strong style={{ color: C.navy }}>Vista previa:</strong> {form.icon} para "{form.cat}"
+                </div>
+              </div>
+            );
+          })()}
+          <Fl label="Título" req>
+            <input style={is} value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Ej: Configuración de cámaras Hikvision" />
+          </Fl>
+          <Fl label="Contenido / Procedimiento" req>
+            <textarea style={{ ...is, minHeight: 130, fontFamily: "monospace", fontSize: 11 }} value={form.body} onChange={e => setForm(p => ({ ...p, body: e.target.value }))} placeholder={"Ejemplo:\n1. Paso uno\n2. Paso dos\n   - sub-paso\n3. Resultado esperado"} />
+          </Fl>
+          <Fl label="Palabras clave (separadas por espacio)">
+            <input style={is} value={form.keywords} onChange={e => setForm(p => ({ ...p, keywords: e.target.value }))} placeholder="hikvision dvr camara configuracion ip" />
+          </Fl>
+          <Fl label="URL del PDF (Google Drive, Dropbox, etc.)">
+            <input style={is} value={form.pdfUrl} onChange={e => setForm(p => ({ ...p, pdfUrl: e.target.value }))} placeholder="https://drive.google.com/file/d/..." />
+            <div style={{ fontSize: 9, color: C.g400, marginTop: 4, fontStyle: "italic" }}>
+              💡 Sube el PDF a Google Drive → clic derecho → "Compartir" → "Cualquiera con el enlace" → Copia y pega aquí
+            </div>
+          </Fl>
+          <Bt onClick={save} icon={editing === "new" ? Plus : Check}>{editing === "new" ? "Crear Artículo" : "Guardar Cambios"}</Bt>
+        </div>
+      )}
+    </Mo>
+  </div>;
+}
+
+/* === PAGE: USERS === */
+function PgUs({ users: us, setUsers: sU, aa, data: d, go }) {
+  const [showNew, setSN] = useState(false);
+  const [editId, setEI] = useState(null);
+  const [nf, snf] = useState({ name: "", role: "aux_operativo", email: "", phone: "" });
+  const [ef, sef] = useState({ name: "", email: "", phone: "" });
+  const [tab, setTab] = useState("todos"); // todos | activos | inactivos | vacantes
+  const listRef = useRef(null);
+  // Helper para cambiar tab + hacer scroll a la lista
+  const goToTab = (t) => { setTab(t); setTimeout(() => { listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 60); };
+  const [searchU, setSearchU] = useState("");
+  const fileInputRefU = useRef(null);
+  const [photoTargetU, setPhotoTargetU] = useState(null);
+  function handlePhotoUploadU(e) {
+    const file = e.target.files?.[0];
+    if (!file || !photoTargetU) return;
+    if (file.size > 1.5 * 1024 * 1024) { alert("La imagen debe pesar menos de 1.5 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      sU(prev => prev.map(u => u.id === photoTargetU.id ? { ...u, photo: ev.target.result } : u));
+      aa(`Actualizó foto de perfil de ${photoTargetU.name}`, "Usuarios");
+      setPhotoTargetU(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function descargarBackup() {
+    const backup = {
+      _meta: {
+        app: "SisteKore",
+        version: "1.0",
+        descargado: new Date().toISOString(),
+        nota: "Backup completo de todos tus datos. Conserva este archivo: si decides cancelar tu suscripción podrás restaurar toda tu información en cualquier momento."
+      },
+      data: {
+        tickets: d?.tickets || [],
+        solved: d?.solved || [],
+        clients: d?.clients || [],
+        inv: d?.inv || [],
+        events: d?.events || [],
+        kb: d?.kb || [],
+        audit: d?.audit || [],
+        notifications: d?.notifications || []
+      },
+      users: us
+    };
+    const fecha = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sistekore-backup-${fecha}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    aa("Descargó backup completo de datos (JSON)", "Usuarios");
+  }
+
+  function create() {
+    if (!nf.name) return;
+    const av = nf.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    sU(p => [...p, { ...nf, id: "U" + String(Date.now()).slice(-4), av, on: true }]);
+    aa(`Creó usuario "${nf.name}"`, "Usuarios");
+    snf({ name: "", role: "aux_operativo", email: "", phone: "" });
+    setSN(false);
+  }
+  function startEdit(u) { setEI(u.id); sef({ name: u.name, email: u.email, phone: u.phone }); }
+  function saveEdit() {
+    sU(p => p.map(u => u.id === editId ? { ...u, name: ef.name, email: ef.email, phone: ef.phone, av: ef.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) } : u));
+    aa(`Editó usuario → "${ef.name}"`, "Usuarios");
+    setEI(null);
+  }
+  function toggleOn(u) {
+    sU(p => p.map(x => x.id === u.id ? { ...x, on: !x.on } : x));
+    aa(`${u.on ? "Inactivó" : "Activó"} usuario "${u.name}"`, "Usuarios");
+  }
+  function remove(u) {
+    sU(p => p.filter(x => x.id !== u.id));
+    aa(`Eliminó usuario "${u.name}"`, "Usuarios");
+  }
+
+  // Filtros de pestañas
+  const filtered = us.filter(u => {
+    if (tab === "activos" && !u.on) return false;
+    if (tab === "inactivos" && u.on) return false;
+    if (tab === "vacantes" && !(u.name || "").toLowerCase().includes("vacante")) return false;
+    if (searchU && !((u.name || "").toLowerCase().includes(searchU.toLowerCase()) || (u.email || "").toLowerCase().includes(searchU.toLowerCase()))) return false;
+    return true;
+  });
+
+  // Conteos
+  const totalActive = us.filter(u => u.on).length;
+  const totalInactive = us.filter(u => !u.on).length;
+  const totalVacant = us.filter(u => (u.name || "").toLowerCase().includes("vacante")).length;
+  const rolesCount = Object.keys(ROLES).length;
+  // Conteos por rol
+  const rolesDistribution = Object.entries(ROLES).map(([k, r]) => ({ key: k, label: r.label, color: r.color, count: us.filter(u => u.role === k).length }));
+
+  // Iconos de permisos por módulo
+  const permIcons = [LayoutDashboard, Ticket, Users, Package, Calendar, BookOpen, Settings];
+
+  return <div data-page-flex style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+    {/* COLUMNA PRINCIPAL */}
+    <div style={{ flex: 1, minWidth: 0 }}>
+
+    {/* HEADER */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+      <div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.5, display: "flex", alignItems: "center", gap: 8 }}>
+          Usuarios y Roles <Users size={22} color={C.purple} strokeWidth={1.85} />
+        </h1>
+        <p style={{ color: C.g500, fontSize: 13, margin: "4px 0 0" }}>Nombres editables · Historial de auditoría</p>
+      </div>
+      <button onClick={() => setSN(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueL} 100%)`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px ${C.glowBlue}` }}>
+        <UserPlus size={14} /> Nuevo Usuario
+      </button>
+    </div>
+
+    {/* RESPALDO DE DATOS */}
+    <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #DBEAFE 100%)`, borderRadius: 16, border: `1px solid rgba(59,130,246,0.18)`, padding: 16, marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: C.shadowCard }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 240 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 11, background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 10px rgba(37,99,255,0.3)` }}>
+          <Shield size={18} strokeWidth={2} />
+        </div>
+        <div>
+          <h3 style={{ fontSize: 13.5, fontWeight: 700, color: C.navy, margin: 0 }}>Respaldo de Datos</h3>
+          <p style={{ fontSize: 11.5, color: C.g600, margin: "3px 0 0", lineHeight: 1.4 }}>Descarga TODA tu información en un solo archivo JSON. Útil como copia de seguridad o si decides cancelar tu suscripción — tus datos siempre serán tuyos.</p>
+        </div>
+      </div>
+      <button onClick={descargarBackup} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(37,99,255,0.25)`, whiteSpace: "nowrap" }}>
+        <Download size={14} /> Descargar mis datos (JSON)
+      </button>
+    </div>
+
+    {/* 5 KPIs */}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 18 }}>
+      {[
+        { icon: Users,         val: totalActive,    label: "Usuarios activos", sub: "Ver lista →",        subColor: "#3B82F6", iconColor: "#3B82F6", fill: "#DBEAFE", fillTo: "#BFDBFE", action: () => goToTab("activos") },
+        { icon: Shield,        val: rolesCount,     label: "Roles definidos",  sub: "Ver lista →",        subColor: "#3B82F6", iconColor: "#EF4444", fill: "#FEE2E2", fillTo: "#FECACA", action: () => goToTab("todos") },
+        { icon: Lock,          val: 24,             label: "Permisos asignados", sub: "Ver lista →",      subColor: "#3B82F6", iconColor: "#7C3AED", fill: "#EDE9FE", fillTo: "#DDD6FE", action: () => goToTab("todos") },
+        { icon: TrendingUp,    val: "100%",         label: "Accesos auditados", sub: "Ver lista →",       subColor: "#3B82F6", iconColor: "#10B981", fill: "#DCFCE7", fillTo: "#A7F3D0", action: () => goToTab("activos") },
+        { icon: Calendar,      val: totalInactive,  label: "Usuarios inactivos", sub: "Ver inactivos →",  subColor: "#3B82F6", iconColor: "#F59E0B", fill: "#FEF3C7", fillTo: "#FDE68A", action: () => goToTab("inactivos") }
+      ].map((k, i) => (
+        <div key={i} onClick={k.action} style={{ background: C.w, borderRadius: 16, padding: "16px 14px", border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", transition: "all .15s" }}
+          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = C.shadowHover; e.currentTarget.style.borderColor = `${k.iconColor}30`; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; e.currentTarget.style.borderColor = "rgba(226,232,240,0.7)"; }}>
+          <div style={{ width: 38, height: 38, borderRadius: "50%", background: `linear-gradient(155deg, ${k.fill} 0%, ${k.fillTo} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+            <k.icon size={17} color={k.iconColor} strokeWidth={1.85} />
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: C.navy, lineHeight: 1.05, letterSpacing: -0.5 }}>{k.val}</div>
+          <div style={{ fontSize: 10, color: C.g500, fontWeight: 700, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.4 }}>{k.label}</div>
+          <div style={{ fontSize: 10.5, color: k.subColor, fontWeight: 600, marginTop: 4 }}>{k.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    {/* TABS + Search */}
+    <div style={{ marginBottom: 14 }}>
+      <div data-tabs style={{ display: "flex", borderBottom: `1px solid ${C.g200}`, gap: 0, alignItems: "flex-end", overflowX: "auto", scrollbarWidth: "none" }}>
+        {[
+          { id: "todos",      l: "Todos",      count: us.length },
+          { id: "activos",    l: "Activos",    count: totalActive },
+          { id: "inactivos",  l: "Inactivos",  count: totalInactive },
+          { id: "vacantes",   l: "Vacantes",   count: totalVacant }
+        ].map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              padding: "11px 16px", border: "none", cursor: "pointer", fontSize: 12.5,
+              fontWeight: active ? 700 : 500, color: active ? C.purple : C.g500,
+              background: "transparent",
+              borderBottom: active ? `2px solid ${C.purple}` : "2px solid transparent",
+              marginBottom: -1, fontFamily: "inherit", whiteSpace: "nowrap",
+              display: "inline-flex", alignItems: "center", gap: 7, flexShrink: 0
+            }}>
+              {t.l}
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 11, background: active ? `${C.purple}18` : C.g100, color: active ? C.purple : C.g500, fontWeight: 700, fontFamily: "monospace" }}>{t.count}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.g400 }} />
+          <input value={searchU} onChange={e => setSearchU(e.target.value)} placeholder="Buscar usuario, rol o correo..." style={{ width: "100%", padding: "9px 12px 9px 34px", borderRadius: 9, border: `1px solid ${C.g200}`, fontSize: 11.5, color: C.navy, outline: "none", background: C.w, fontFamily: "inherit", boxSizing: "border-box" }} />
+        </div>
+        <button style={{ padding: "9px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          ▽ Filtros
+        </button>
+      </div>
+    </div>
+
+    {/* GRID DE TARJETAS DE USUARIO */}
+    <div ref={listRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 14, scrollMarginTop: 70 }}>
+      {filtered.map(u => {
+        const r = ROLES[u.role];
+        const accent = r?.color || C.g400;
+        const isVacant = (u.name || "").toLowerCase().includes("vacante");
+        const initials = u.av || (u.name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+        const hasPhoto = !!u.photo;
+        return (
+          <div key={u.id} style={{
+            background: C.w,
+            borderRadius: 16,
+            border: `1px solid rgba(226,232,240,0.7)`,
+            padding: 16,
+            opacity: u.on ? 1 : 0.7,
+            boxShadow: C.shadowCard,
+            transition: "all .2s",
+            position: "relative",
+            overflow: "hidden"
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = C.shadowHover; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowCard; }}>
+            {/* Borde lateral coloreado */}
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: accent }} />
+
+            {editId === u.id ? (
+              <div>
+                <Fl label="Nombre"><input style={is} value={ef.name} onChange={e => sef(p => ({ ...p, name: e.target.value }))} /></Fl>
+                <Fl label="Email"><input style={is} value={ef.email} onChange={e => sef(p => ({ ...p, email: e.target.value }))} /></Fl>
+                <Fl label="Teléfono"><input style={is} value={ef.phone} onChange={e => sef(p => ({ ...p, phone: e.target.value }))} /></Fl>
+                <div style={{ display: "flex", gap: 5 }}>
+                  <button onClick={saveEdit} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "#10B981", color: C.w, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Guardar</button>
+                  <button onClick={() => setEI(null)} style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Avatar + Info */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div onClick={() => { setPhotoTargetU(u); fileInputRefU.current?.click(); }} title="Clic para subir foto"
+                    style={{ position: "relative", width: 44, height: 44, borderRadius: "50%", background: hasPhoto ? `url(${u.photo}) center/cover` : `${accent}25`, color: accent, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", border: `2px solid ${C.w}`, boxShadow: hasPhoto ? "0 2px 6px rgba(0,0,0,0.12)" : "none" }}>
+                    {!hasPhoto && initials}
+                    <div style={{ position: "absolute", right: -2, bottom: -2, width: 17, height: 17, borderRadius: "50%", background: C.blue, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.w}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>
+                      <Camera size={9} strokeWidth={3} />
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{u.name}</div>
+                    <div style={{ fontSize: 10.5, color: accent, fontWeight: 600 }}>{r?.label || "—"}</div>
+                  </div>
+                </div>
+
+                {/* Datos contacto */}
+                <div style={{ fontSize: 11, color: C.g600, marginBottom: 12 }}>
+                  {u.email && <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}><Mail size={11} color={C.g400} /> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</span></div>}
+                  {u.phone && <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}><Phone size={11} color={C.g400} /> {u.phone}</div>}
+                  {!u.email && !u.phone && isVacant && <div style={{ color: "#F59E0B", fontStyle: "italic" }}>Acceso limitado</div>}
+                  {!u.email && !u.phone && !isVacant && <div style={{ color: C.g400, fontStyle: "italic" }}>Acceso completo</div>}
+                </div>
+
+                {/* Estado + Último acceso */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, fontSize: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: u.on ? "#10B981" : "#F59E0B" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: u.on ? "#10B981" : "#F59E0B" }} />
+                    {u.on ? "Activo" : isVacant ? "Vacante" : "Inactivo"}
+                  </span>
+                  {u.on && <span style={{ color: C.g500 }}>Último acceso: {["Hoy, 8:45 AM", "Hoy, 9:12 AM", "Hoy, 10:05 AM", "Ayer, 6:30 PM", "Hoy, 7:50 AM", "Ayer, 4:18 PM", "Hoy, 3:02 AM"][us.indexOf(u) % 7]}</span>}
+                </div>
+
+                {/* Permisos icons */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Permisos</div>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+                    {permIcons.slice(0, 6).map((PIcon, i) => (
+                      <div key={i} style={{ width: 22, height: 22, borderRadius: 5, background: `${accent}15`, color: accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <PIcon size={11} strokeWidth={1.85} />
+                      </div>
+                    ))}
+                    {r?.all && <span style={{ fontSize: 9.5, color: accent, fontWeight: 700, marginLeft: 4 }}>+{permIcons.length - 6} más</span>}
+                  </div>
+                </div>
+
+                {/* Acciones */}
+                {isVacant ? (
+                  <button onClick={() => { snf(p => ({ ...p, role: u.role })); setSN(true); }} style={{ width: "100%", padding: "9px 12px", borderRadius: 9, border: `1px solid ${accent}40`, background: `${accent}08`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                    <Plus size={12} /> Crear Usuario
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button onClick={() => startEdit(u)} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.blue}40`, background: `${C.blue}08`, color: C.blue, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Edit3 size={11} /> Editar</button>
+                    <button onClick={() => toggleOn(u)} style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1px solid ${u.on ? "#F59E0B" : "#10B981"}40`, background: `${u.on ? "#F59E0B" : "#10B981"}08`, color: u.on ? "#F59E0B" : "#10B981", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{u.on ? "Inactivar" : "Activar"}</button>
+                    <button onClick={() => { if (window.confirm(`¿Eliminar a ${u.name}?`)) remove(u); }} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid #EF444440`, background: "#FEE2E208", color: "#EF4444", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}><Trash2 size={11} /></button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {/* Card Agregar nuevo rol/vacante */}
+      <button onClick={() => { sU(prev => [...prev, { id: "U" + Date.now(), name: "Nuevo Usuario", role: "aux_operativo", email: "", phone: "", av: "NU", on: true }]); aa("Agregó nuevo usuario (rol auxiliar)", "Usuarios"); }} title="Crear nuevo usuario / rol" style={{
+        background: "transparent", borderRadius: 16, border: `2px dashed ${C.g300}`, padding: 20, cursor: "pointer", fontFamily: "inherit",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: C.g500, minHeight: 240
+      }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = C.purple; e.currentTarget.style.color = C.purple; e.currentTarget.style.background = `${C.purple}05`; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = C.g300; e.currentTarget.style.color = C.g500; e.currentTarget.style.background = "transparent"; }}>
+        <div style={{ width: 44, height: 44, borderRadius: "50%", background: `${C.purple}15`, color: C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Plus size={24} strokeWidth={2} />
+        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 700 }}>Agregar nuevo rol / vacante</div>
+        <div style={{ fontSize: 10.5, color: C.g500, textAlign: "center", maxWidth: 200 }}>Crea posiciones y define permisos</div>
+        <span style={{ marginTop: 4, padding: "6px 12px", borderRadius: 7, background: C.purple, color: C.w, fontSize: 11, fontWeight: 700 }}>Crear rol</span>
+      </button>
+    </div>
+
+    </div>
+
+    {/* SIDEBAR DERECHO */}
+    <aside data-aside style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Actividad reciente */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Actividad reciente</h3>
+          <button onClick={() => go && go("users")} style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Ver todo</button>
+        </div>
+        {(() => {
+          const realAudit = (d?.audit || []).filter(a => a.module === "Usuarios").slice(0, 4);
+          const demo = [
+            { user: "Erika Julieth",    action: "Actualizó permisos del rol Técnico", time: "Hoy, 9:14 AM",  role: "dir_comercial", icon: Shield, color: "#3B82F6" },
+            { user: "Marcela Mesa",     action: "Exportó auditoría de usuarios",      time: "Ayer, 6:45 PM", role: "dir_contable",  icon: Download, color: "#7C3AED" },
+            { user: "David Lamar",      action: "Inició sesión",                       time: "Ayer, 4:18 PM", role: "aux_operativo", icon: Lock, color: "#10B981" },
+            { user: "Sistema",          action: "Respaldo de datos generado",          time: "Ayer, 2:30 AM", role: null,            icon: Shield, color: "#F59E0B" }
+          ];
+          const items = realAudit.length > 0 ? realAudit.map(a => {
+            const u = us.find(x => x.name === a.user);
+            const r = u ? ROLES[u.role] : null;
+            return { user: a.user, action: a.action, time: ta(a.ts), color: r?.color || C.g500, icon: Activity };
+          }) : demo;
+          return items.map((it, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", alignItems: "flex-start" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${it.color}20`, color: it.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <it.icon size={14} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy, lineHeight: 1.3 }}>{it.user}</div>
+                <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2, lineHeight: 1.4 }}>{it.action}</div>
+                <div style={{ fontSize: 10, color: C.g400, marginTop: 3 }}>{it.time}</div>
+              </div>
+            </div>
+          ));
+        })()}
+      </div>
+
+      {/* Insights IA */}
+      <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 18, padding: 16, border: `1px solid rgba(124,58,237,0.18)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Insights IA</h3>
+          <span style={{ fontSize: 11 }}>✦</span>
+        </div>
+        {[
+          { tone: "warn", icon: AlertTriangle, title: `${totalInactive || 1} usuario inactivo`,   text: "Revisa usuarios sin actividad", action: () => setTab("inactivos") },
+          { tone: "info", icon: Users,         title: "Permisos redundantes",                       text: "2 usuarios tienen permisos duplicados", action: () => goToTab("todos") },
+          { tone: "ok",   icon: Shield,        title: "Roles optimizados",                          text: "Sugerencia para simplificar roles", action: () => goToTab("todos") }
+        ].map((ins, i) => {
+          const tones = {
+            warn: { bg: "#FEF3C7", c: "#F59E0B" },
+            info: { bg: "#DBEAFE", c: "#3B82F6" },
+            ok:   { bg: "#D1FAE5", c: "#10B981" }
+          };
+          const cfg = tones[ins.tone];
+          return (
+            <div key={i} onClick={ins.action} style={{ display: "flex", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", cursor: "pointer" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.bg, color: cfg.c, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <ins.icon size={15} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{ins.title}</div>
+                <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2, lineHeight: 1.4 }}>{ins.text}</div>
+                <div style={{ fontSize: 10, color: cfg.c, fontWeight: 700, marginTop: 4 }}>Ver detalle →</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Roles definidos */}
+      <div style={{ background: C.w, borderRadius: 18, padding: 16, border: `1px solid rgba(226,232,240,0.7)`, boxShadow: C.shadowCard }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: C.navy, margin: 0 }}>Roles definidos</h3>
+          <button onClick={() => goToTab("todos")} style={{ background: "none", border: "none", color: C.blue, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>Ver todos</button>
+        </div>
+        {rolesDistribution.map((r, i) => (
+          <div key={r.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderTop: i > 0 ? `1px solid ${C.g100}` : "none", fontSize: 11.5 }}>
+            <span style={{ display: "inline-flex", gap: 6, alignItems: "center", color: C.g600 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.color }} />
+              {r.label}
+            </span>
+            <span style={{ color: C.navy, fontWeight: 700, fontFamily: "monospace" }}>{r.count}</span>
+          </div>
+        ))}
+      </div>
+    </aside>
+
+    {/* Hidden file input */}
+    <input ref={fileInputRefU} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUploadU} />
+
+    <Mo open={showNew} onClose={() => setSN(false)} title="Nuevo Usuario">
+      <Fl label="Nombre" req><input style={is} value={nf.name} onChange={e => snf(p => ({ ...p, name: e.target.value }))} /></Fl>
+      <Fl label="Rol"><select style={is} value={nf.role} onChange={e => snf(p => ({ ...p, role: e.target.value }))}>{Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</select></Fl>
+      <Fl label="Email"><input style={is} value={nf.email} onChange={e => snf(p => ({ ...p, email: e.target.value }))} /></Fl>
+      <Fl label="Teléfono"><input style={is} value={nf.phone} onChange={e => snf(p => ({ ...p, phone: e.target.value }))} /></Fl>
+      <button onClick={create} style={{ padding: "10px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.blue}, ${C.blueL})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: `0 6px 18px ${C.glowBlue}` }}><UserPlus size={13} /> Crear</button>
+    </Mo>
+  </div>;
+}
+
+/* === PORTAL UNIVERSE (animación 100% JavaScript con requestAnimationFrame) ===
+   Bypassa CSS keyframes — actualiza posiciones cada frame manipulando el DOM directamente.
+   Garantiza movimiento visible aunque el navegador ignore animaciones CSS. */
+function PortalUniverse() {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let W = container.offsetWidth || window.innerWidth;
+    let H = container.offsetHeight || window.innerHeight;
+
+    // === Crear estrellas ===
+    const STAR_COUNT = 350;
+    const stars = [];
+    const starColors = ["#FFFFFF", "#A855F7", "#3B82F6", "#7C3AED", "#C4B5FD", "#FFFFFF"];
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const el = document.createElement("div");
+      const size = (i % 3) + 1;
+      const color = starColors[i % starColors.length];
+      el.style.cssText = `position:absolute;left:0;top:0;width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 ${size * 3}px ${color};pointer-events:none;will-change:transform,opacity`;
+      container.appendChild(el);
+      stars.push({
+        el,
+        x: Math.random() * W,
+        y: Math.random() * H,
+        // Universo: drift MUY lento, casi imperceptible. Las estrellas más grandes van un poco más rápido (parallax cercano).
+        vx: (Math.random() - 0.5) * 0.04,
+        vy: (Math.random() < 0.5 ? -1 : 1) * (0.015 + (size / 3) * 0.05),
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpd: 0.008 + Math.random() * 0.012,
+        size
+      });
+    }
+
+    // === Crear cometas ===
+    // cycleDur (más abajo) es la duración del paso del cometa por la pantalla.
+    // Lo hacemos largo (~22-26s) y dejamos huecos también largos para no saturar.
+    const cometDefs = [
+      { angle: 30,  tailLen: 240, color: "#A855F7", delay: 2000,  cycleDur: 22000, cycleGap: 14000 },
+      { angle: 150, tailLen: 280, color: "#60A5FA", delay: 12000, cycleDur: 26000, cycleGap: 16000 }
+    ];
+    const comets = cometDefs.map(def => {
+      const wrap = document.createElement("div");
+      wrap.style.cssText = `position:absolute;left:0;top:0;width:${def.tailLen}px;height:4px;background:linear-gradient(90deg,transparent 0%,${def.color}40 30%,${def.color} 75%,#FFFFFF 100%);border-radius:6px;box-shadow:0 0 18px ${def.color},0 0 36px ${def.color}80,0 0 54px ${def.color}40;pointer-events:none;opacity:0;will-change:transform,opacity`;
+      const head = document.createElement("div");
+      head.style.cssText = `position:absolute;right:-7px;top:-5px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#FFFFFF 0%,#FFFFFF 50%,${def.color} 100%);box-shadow:0 0 24px #FFFFFF,0 0 48px ${def.color},0 0 72px ${def.color}80`;
+      wrap.appendChild(head);
+      container.appendChild(wrap);
+      return { ...def, el: wrap, t: -def.delay };
+    });
+
+    // === Loop de animación ===
+    let last = performance.now();
+    let rafId;
+
+    function tick(now) {
+      const rawDt = now - last;
+      last = now;
+      // Cap dt para evitar saltos enormes cuando la pestaña vuelve de estar oculta/minimizada
+      const dtMs = Math.min(rawDt, 50); // máximo 50ms (≈ 3 frames)
+      const dt = dtMs / 16.67; // factor: 1 = 60fps frame
+
+      // re-medir cada cierto tiempo (ventana puede haber cambiado)
+      W = container.offsetWidth || window.innerWidth;
+      H = container.offsetHeight || window.innerHeight;
+
+      // Estrellas: drift + wrap + twinkle
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        if (s.x < -5) s.x = W + 5;
+        else if (s.x > W + 5) s.x = -5;
+        if (s.y < -5) s.y = H + 5;
+        else if (s.y > H + 5) s.y = -5;
+        s.twinkle += s.twinkleSpd * dt;
+        const op = 0.35 + 0.65 * (Math.sin(s.twinkle) * 0.5 + 0.5);
+        s.el.style.transform = `translate3d(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px,0)`;
+        s.el.style.opacity = op.toFixed(2);
+      }
+
+      // Cometas: viajan en línea recta con su ángulo, luego reaparecen
+      for (let i = 0; i < comets.length; i++) {
+        const c = comets[i];
+        c.t += dtMs;
+        const totalCycle = c.cycleDur + c.cycleGap;
+        const phase = ((c.t % totalCycle) + totalCycle) % totalCycle;
+
+        if (phase < 0 || phase > c.cycleDur) {
+          c.el.style.opacity = 0;
+          continue;
+        }
+        const p = phase / c.cycleDur; // 0..1
+        const rad = (c.angle * Math.PI) / 180;
+        // distancia total del recorrido (diagonal de pantalla + márgenes)
+        const dist = Math.sqrt(W * W + H * H) + c.tailLen + 200;
+        // punto de inicio: depende del ángulo
+        let startX, startY;
+        if (c.angle === 30) { startX = -c.tailLen - 50; startY = -100; }
+        else if (c.angle === 150) { startX = W + c.tailLen + 50; startY = -100; }
+        else { startX = -c.tailLen; startY = -100; }
+        const dirX = Math.cos(rad);
+        const dirY = Math.sin(rad);
+        const x = startX + dirX * dist * p;
+        const y = startY + dirY * dist * p;
+        const fadeIn = p < 0.06 ? p / 0.06 : 1;
+        const fadeOut = p > 0.94 ? (1 - p) / 0.06 : 1;
+        const op = Math.min(fadeIn, fadeOut);
+        c.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${c.angle}deg)`;
+        c.el.style.opacity = op.toFixed(2);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    rafId = requestAnimationFrame(tick);
+
+    // resize observer simple
+    const onResize = () => {
+      W = container.offsetWidth || window.innerWidth;
+      H = container.offsetHeight || window.innerHeight;
+    };
+    window.addEventListener("resize", onResize);
+
+    // Reset del tiempo al volver de minimizar — evita saltos enormes y "desaparición" de estrellas
+    const onVisibility = () => {
+      if (!document.hidden) {
+        last = performance.now();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stars.forEach(s => s.el.remove());
+      comets.forEach(c => c.el.remove());
+    };
+  }, []);
+
+  return <div ref={containerRef} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }} />;
+}
+
+/* === CLIENT PORTAL === */
+function Portal({ data: d, setData: sd, goBack, openTicket, session, requireAuth }) {
+  const [tab, setTab] = useState("form");
+  const [f, sf] = useState({ name: "", nit: "", phone: "", empresa: "", line: "", city: "", cat: "", inc: "", desc: "" });
+  const [tid, setTid] = useState("");
+  const [rid, setRid] = useState("");
+  const [rat, setRat] = useState(0);
+  const [cmt, setCmt] = useState("");
+  const [done, setDone] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [detailTicket, setDetailTicket] = useState(null); // Modal de detalle completo del ticket (público, sin login)
+
+  function submit() {
+    if (!f.name || !f.phone || !f.inc) return;
+    const id = "TK-" + String(Date.now()).slice(-5);
+    const pri = ap(f.inc);
+    let cid = d.clients.find(c => c.phone === f.phone || c.nit === f.nit)?.id;
+    if (!cid) {
+      cid = "C" + String(Date.now()).slice(-5);
+      sd(p => ({ ...p, clients: [...p.clients, { id: cid, name: f.name, nit: f.nit, contact: f.name, phone: f.phone, email: "", wa: "57" + f.phone, nb: "", city: f.city, type: f.line, seg: f.line === "Hogar" ? "hogar" : "microempresa", plan: "Por demanda", dev: 1 }] }));
+    }
+    sd(p => ({ ...p, tickets: [{ id, cid, inc: f.inc, desc: f.desc, pri, st: "PENDIENTE", tech: "", at: new Date().toISOString() }, ...p.tickets], notifications: [{ id: "N" + Date.now(), text: `🌐 Portal: Nuevo ticket ${id} (${pri}) de ${f.name}`, time: new Date().toISOString(), read: false, type: pri === "URGENTE" ? "urgent" : "info" }, ...p.notifications] }));
+    setTid(id);
+    setDone(true);
+  }
+  function rate() {
+    if (!rat) return;
+    sd(p => ({ ...p, solved: p.solved.map(t => t.id === rid ? { ...t, sat: rat, cmt, rated: true } : t) }));
+    setTab("rated");
+  }
+
+  // Tabs configuración
+  const tabs = [
+    { id: "form",  l: "Crear o Reportar Incidente", desc: "Crea una nueva solicitud", icon: Send },
+    { id: "track", l: "Consultar Estado",            desc: "Revisa tus solicitudes",    icon: Search },
+    { id: "rate",  l: "Calificar Servicio",          desc: "Evalúa tu experiencia",     icon: Star }
+  ];
+
+  // Sugerencias rápidas (consejos)
+  const quickTips = [
+    "No tengo internet", "Mi equipo está lento", "Impresora no imprime",
+    "Problemas con correo", "Cámara de seguridad caída"
+  ];
+
+  return <div data-portal-root style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0A1535 0%, #0E1A45 50%, #0A1535 100%)", position: "relative", overflowX: "hidden", overflowY: "auto", color: "#FFFFFF", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+
+    {/* CSS exclusivo del Portal — se inyecta aquí para que esté disponible sin importar el estado del App */}
+    <style>{`
+      /* Quitar el recuadro azul de tap en TODO el portal */
+      [data-portal-root] *, [data-portal-root] button, [data-portal-root] a, [data-portal-root] input, [data-portal-root] select, [data-portal-root] textarea, [data-portal-root] [onclick] {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none;
+        touch-action: manipulation;
+        outline: none;
+      }
+      [data-portal-root] button, [data-portal-root] a, [data-portal-root] [role="button"], [data-portal-root] [onclick] {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+      }
+      /* Mantener selección en inputs */
+      [data-portal-root] input, [data-portal-root] textarea {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      /* "Iniciar sesión" del header — nunca debe envolver a 2 líneas */
+      [data-portal-header] button { white-space: nowrap; }
+
+      @media (max-width: 767px) {
+        [data-portal-sidebar-grid] { grid-template-columns: 1fr !important; gap: 10px !important; }
+        [data-portal-header]    { padding: 10px 12px !important; }
+        [data-portal-header] img { height: 32px !important; }
+        [data-portal-header] button { padding: 9px 14px !important; font-size: 11.5px !important; gap: 5px !important; min-height: 40px !important; border-radius: 22px !important; }
+        [data-portal-h1]        { font-size: clamp(22px,7.5vw,34px) !important; letter-spacing: -0.5px !important; }
+        [data-portal-hero]      { padding: 14px 12px 18px !important; }
+        [data-portal-tabs]      { grid-template-columns: 1fr !important; gap: 8px !important; }
+        [data-portal-tabs] button { padding: 14px 16px !important; gap: 12px !important; min-height: 60px !important; border-radius: 14px !important; }
+        [data-portal-tabs] button > div:first-child { width: 40px !important; height: 40px !important; flex-shrink: 0 !important; border-radius: 10px !important; }
+        [data-portal-tabs] button > div:last-child > div:first-child { font-size: 13px !important; font-weight: 700 !important; }
+        [data-portal-tabs] button > div:last-child > div:last-child  { font-size: 10.5px !important; display: block !important; }
+        [data-portal-panel]     { grid-template-columns: 1fr !important; gap: 12px !important; padding: 10px !important; }
+        [data-portal-form-grid] { grid-template-columns: 1fr !important; }
+        [data-portal-submit-row]{ flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
+        [data-portal-submit-row] button { width: 100% !important; justify-content: center !important; min-height: 48px !important; }
+        /* Consejos rápidos — touch targets más grandes */
+        [data-portal-sidebar-grid] button { min-height: 44px !important; padding: 12px 4px !important; }
+        /* Footer iconos sociales — 44x44 mínimo */
+        [data-portal-footer] a[href*="facebook"], [data-portal-footer] a[href*="instagram"] { width: 44px !important; height: 44px !important; }
+        /* Footer WhatsApp + email tarjetas — más amplias */
+        [data-portal-footer] a[href*="wa.me"], [data-portal-footer] a[href*="mail"] { min-height: 48px !important; padding: 8px 12px !important; }
+        [data-portal-footer]    { grid-template-columns: 1fr !important; gap: 16px !important; padding: 14px !important; margin-top: 14px !important; }
+        [data-portal-footer] > div:nth-child(2) { align-items: flex-start !important; text-align: left !important; }
+        [data-portal-footer] > div:nth-child(3) { align-items: flex-start !important; }
+        [data-portal-footer] > div:nth-child(3) > div:nth-child(2) { justify-content: flex-start !important; }
+        [data-portal-footer] > div:nth-child(3) > div:last-child   { align-items: flex-start !important; width: 100% !important; }
+        /* Inputs/selects más grandes para tap */
+        [data-portal-panel] input, [data-portal-panel] select, [data-portal-panel] textarea {
+          font-size: 16px !important; /* evita zoom en iOS */
+          min-height: 44px !important;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 1023px) {
+        [data-portal-sidebar-grid] { grid-template-columns: 1fr 1fr !important; }
+        [data-portal-tabs]   { grid-template-columns: repeat(3,1fr) !important; }
+        [data-portal-panel]  { grid-template-columns: 1fr 240px !important; }
+        [data-portal-footer] { grid-template-columns: 1fr 1fr !important; }
+        [data-portal-footer] > div:nth-child(2) { display: none !important; }
+        [data-portal-h1]     { font-size: 40px !important; }
+        [data-portal-header] button { font-size: 12px !important; white-space: nowrap !important; }
+        /* Tablet: tap targets cómodos */
+        [data-portal-sidebar-grid] button { min-height: 40px !important; }
+        [data-portal-footer] a { min-height: 44px !important; }
+      }
+    `}</style>
+
+    {/* === FONDO UNIVERSO — animación 100% JavaScript (requestAnimationFrame).
+        Bypassa CSS keyframes (que estaban siendo ignoradas por el navegador) y manipula el DOM directo. */}
+    <PortalUniverse />
+
+    {/* Ondas decorativas SVG */}
+    <svg style={{ position: "absolute", top: 80, left: -100, width: "calc(100% + 200px)", height: 400, opacity: 0.3, pointerEvents: "none" }} viewBox="0 0 1400 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="waveGradPortal" x1="0" x2="1">
+          <stop offset="0" stopColor="#7C3AED" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#A855F7" stopOpacity="0.5" />
+          <stop offset="1" stopColor="#3B82F6" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M 0 200 Q 350 80 700 200 T 1400 200" stroke="url(#waveGradPortal)" strokeWidth="1.5" fill="none" />
+      <path d="M 0 250 Q 350 130 700 250 T 1400 250" stroke="url(#waveGradPortal)" strokeWidth="1" fill="none" opacity="0.6" />
+      <path d="M 0 300 Q 350 180 700 300 T 1400 300" stroke="url(#waveGradPortal)" strokeWidth="1" fill="none" opacity="0.4" />
+    </svg>
+
+    {/* HEADER: Logo + Iniciar sesión */}
+    <header data-portal-header style={{ position: "relative", zIndex: 10, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ flex: 1 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 52, width: "auto" }} />
+        <div>
+          <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 900, letterSpacing: 2, lineHeight: 1 }}>CORE</div>
+        </div>
+      </div>
+      <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+        <button onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 30, border: "1px solid rgba(255,255,255,0.2)", background: session ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.05)", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(12px)", transition: "all .15s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = session ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = session ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}>
+          <User size={15} />
+          {session ? "Volver al portal" : "Iniciar sesión"}
+        </button>
+      </div>
+    </header>
+
+    {/* HERO con Eddy saludando — al hacer click cuando el panel está abierto, vuelve al inicio */}
+    <div data-portal-hero
+      onClick={() => { if (panelOpen) { setPanelOpen(false); setDone(false); setTid(""); setRid(""); setRat(0); setCmt(""); setTab(""); } }}
+      style={{ position: "relative", zIndex: 5, textAlign: "center", padding: "20px 16px 30px", cursor: panelOpen ? "pointer" : "default" }}
+      title={panelOpen ? "Toca para volver al inicio" : ""}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#A855F7", letterSpacing: 4, marginBottom: 10 }}>PORTAL CLIENTE</div>
+      <h1 data-portal-h1 style={{ fontSize: "clamp(28px,7vw,56px)", fontWeight: 700, color: "#FFFFFF", margin: 0, lineHeight: 1.1, letterSpacing: -1 }}>
+        Centro de <span style={{ background: "linear-gradient(135deg, #A855F7, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>soporte inteligente</span>
+      </h1>
+      <p style={{ fontSize: "clamp(13px,2.2vw,16px)", color: "#94A3B8", marginTop: 12, marginBottom: 0, maxWidth: 580, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+        Reporta incidentes, consulta estados y recibe asistencia técnica con IA.
+      </p>
+
+      {/* EDDY saludando con glow + animación */}
+      <div style={{ marginTop: 32, display: "flex", justifyContent: "center", position: "relative" }}>
+        {/* Aura glow */}
+        <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.35) 0%, rgba(59,130,246,0.15) 40%, transparent 70%)", animation: "eddy-glow 3s ease-in-out infinite", pointerEvents: "none" }} />
+        {/* Eddy */}
+        <div style={{ animation: "eddy-greet 3s ease-in-out infinite", filter: "drop-shadow(0 8px 32px rgba(124,58,237,0.5))" }}>
+          <EddyIcon size={140} withShadow trackMouse />
+        </div>
+      </div>
+    </div>
+
+    {/* TABS de acción — 3 cards grandes */}
+    <div style={{ position: "relative", zIndex: 5, maxWidth: 1280, margin: "0 auto", padding: "0 12px", boxSizing: "border-box", width: "100%" }}>
+      <div style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderRadius: panelOpen ? "20px 20px 0 0" : 20, padding: panelOpen ? "12px 12px 0" : 12, border: "1px solid rgba(255,255,255,0.06)", borderBottom: panelOpen ? "none" : "1px solid rgba(255,255,255,0.06)" }}>
+        <div data-portal-tabs style={{ display: "grid", gridTemplateColumns: `repeat(${tabs.length}, 1fr)`, gap: 8 }}>
+          {tabs.map(t => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={e => { e.stopPropagation(); setTab(t.id); setPanelOpen(true); setDone(false); }} style={{
+                padding: "20px 18px",
+                borderRadius: 16,
+                border: active ? "none" : "1px solid rgba(255,255,255,0.1)",
+                background: active ? "linear-gradient(135deg, #2563FF, #7C3AED)" : "rgba(255,255,255,0.03)",
+                color: "#FFFFFF",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textAlign: "left",
+                transition: "all .2s",
+                boxShadow: active ? "0 8px 28px rgba(37,99,255,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset" : "none"
+              }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.transform = "translateY(0)"; } }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: active ? "rgba(255,255,255,0.18)" : "rgba(124,58,237,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <t.icon size={20} color="#FFFFFF" strokeWidth={2} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{t.l}</div>
+                  <div style={{ fontSize: 11, color: active ? "rgba(255,255,255,0.8)" : "#94A3B8", marginTop: 3 }}>{t.desc}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* PANEL PRINCIPAL — 2 columnas (form izq + sidebar der) — visible solo al hacer clic en un botón */}
+      {panelOpen && (
+        <div data-portal-back-row onClick={e => e.stopPropagation()} style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", padding: "10px 16px", borderLeft: "1px solid rgba(255,255,255,0.06)", borderRight: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={e => { e.stopPropagation(); e.preventDefault(); setPanelOpen(false); setDone(false); setTid(""); setRid(""); setRat(0); setCmt(""); setTab(""); }}
+            onTouchEnd={e => { e.stopPropagation(); }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 22, border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.08)", color: "#FFFFFF", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "all .15s", minHeight: 40, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}>
+            ← Volver al inicio
+          </button>
+          <span style={{ fontSize: 11.5, color: "#94A3B8" }}>{tabs.find(x => x.id === tab)?.l || ""}</span>
+        </div>
+      )}
+      {panelOpen && <div data-portal-panel style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderRadius: "0 0 20px 20px", padding: 16, border: "1px solid rgba(255,255,255,0.06)", borderTop: "none", display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
+
+        {/* COLUMNA IZQUIERDA — Formulario */}
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: 24, color: "#0E2A52" }}>
+          {tab === "form" && !done && (
+            <div>
+              <div data-portal-form-grid style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
+                <Fl label="Nombre completo" req><input style={is} placeholder="Ej. Juan Pérez" value={f.name} onChange={e => sf(p => ({ ...p, name: e.target.value }))} /></Fl>
+                <Fl label="NIT / Cédula"><input style={is} placeholder="Ej. 900123456-7" value={f.nit} onChange={e => sf(p => ({ ...p, nit: e.target.value }))} /></Fl>
+                <Fl label="Celular" req><input style={is} placeholder="Ej. 300 123 4567" value={f.phone} onChange={e => sf(p => ({ ...p, phone: e.target.value }))} /></Fl>
+                <Fl label="Ciudad / Barrio"><input style={is} placeholder="Ej. Medellín / Laureles" value={f.city} onChange={e => sf(p => ({ ...p, city: e.target.value }))} /></Fl>
+                <Fl label="Línea de servicio">
+                  <select style={is} value={f.line} onChange={e => sf(p => ({ ...p, line: e.target.value, empresa: "" }))}>
+                    <option value="">Selecciona la línea</option>
+                    <option value="Empresa">Empresa</option>
+                    <option value="Hogar">Hogar</option>
+                  </select>
+                </Fl>
+                {f.line === "Empresa" && (
+                  <Fl label="Empresa">
+                    <select style={is} value={f.empresa} onChange={e => sf(p => ({ ...p, empresa: e.target.value }))}>
+                      <option value="">Selecciona tu empresa</option>
+                      {(d.clients || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </Fl>
+                )}
+              </div>
+
+              <Fl label="Categoría del incidente" req>
+                <select style={is} value={f.cat} onChange={e => sf(p => ({ ...p, cat: e.target.value, inc: "" }))}>
+                  <option value="">Selecciona la categoría</option>
+                  {Object.keys(CATS).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Fl>
+
+              <Fl label="Describe tu problema" req>
+                <textarea style={{ ...is, minHeight: 100, resize: "vertical" }} placeholder="Cuéntanos con detalle qué está sucediendo..." value={f.desc} onChange={e => sf(p => ({ ...p, desc: e.target.value.slice(0, 500) }))} />
+                <div style={{ fontSize: 10, color: "#94A3B8", textAlign: "right", marginTop: 4 }}>{f.desc.length}/500</div>
+              </Fl>
+
+              {/* Banner IA */}
+              <div style={{ background: "linear-gradient(135deg, #F5F3FF, #EDE9FE)", border: "1px solid rgba(124,58,237,0.25)", borderRadius: 14, padding: 14, marginBottom: 18, display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ flexShrink: 0 }}>
+                  <EddyIcon size={48} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0E2A52" }}>Nuestra IA puede ayudarte a resolver más rápido</div>
+                  <div style={{ fontSize: 11, color: "#475569", marginTop: 3, lineHeight: 1.4 }}>Al describir tu problema, analizaremos y te sugeriremos soluciones posibles.</div>
+                </div>
+                <span style={{ color: "#7C3AED", fontSize: 18 }}>✦</span>
+              </div>
+
+              {/* Botones inferiores */}
+              <div data-portal-submit-row style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between" }}>
+                <button onClick={() => sf({ name: "", nit: "", phone: "", empresa: "", line: "", city: "", cat: "", inc: "", desc: "" })} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 9, border: `1px solid #E2E8F0`, background: "#F5F7FB", color: "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  ↺ Limpiar formulario
+                </button>
+                <button onClick={() => { if (!f.inc && f.desc) sf(p => ({ ...p, inc: f.desc.slice(0, 50) })); submit(); }} disabled={!f.name || !f.phone || (!f.desc && !f.inc)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 10, border: "none", background: (!f.name || !f.phone || (!f.desc && !f.inc)) ? "#CBD5E1" : "linear-gradient(135deg, #2563FF, #7C3AED)", color: "#FFFFFF", fontSize: 13, fontWeight: 700, cursor: (!f.name || !f.phone || (!f.desc && !f.inc)) ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: (!f.name || !f.phone || (!f.desc && !f.inc)) ? "none" : "0 8px 24px rgba(37,99,255,0.35)", transition: "all .15s" }}>
+                  <Send size={14} /> Enviar Incidente
+                </button>
+              </div>
+              <div style={{ marginTop: 12, fontSize: 11, color: "#64748B", textAlign: "right", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5 }}>
+                <Lock size={11} /> Tu información está segura con nosotros
+              </div>
+            </div>
+          )}
+
+          {tab === "form" && done && (
+            <div style={{ textAlign: "center", padding: "30px 16px" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #D1FAE5, #A7F3D0)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", boxShadow: "0 8px 24px rgba(16,185,129,0.3)" }}>
+                <CheckCircle size={36} color="#10B981" strokeWidth={2.5} />
+              </div>
+              <h3 style={{ color: "#0E2A52", fontSize: 22, fontWeight: 700, marginBottom: 6 }}>¡Incidente Registrado!</h3>
+              <p style={{ color: "#64748B", fontSize: 13, marginBottom: 16 }}>Tu número de ticket es:</p>
+              <div style={{ background: "linear-gradient(135deg, #FEE2E2, #FECACA)", borderRadius: 14, padding: "14px 28px", display: "inline-block", fontFamily: "monospace", fontSize: 28, fontWeight: 700, color: "#DC2626", border: `2px dashed #EF4444`, marginBottom: 14 }}>{tid}</div>
+              <p style={{ color: "#94A3B8", fontSize: 12 }}>Guarda este número para consultar el estado.</p>
+              <button onClick={() => setTab("track")} style={{ marginTop: 16, padding: "10px 22px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #2563FF, #7C3AED)", color: "#FFFFFF", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}><Search size={13} /> Consultar mi ticket</button>
+            </div>
+          )}
+
+          {tab === "track" && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "#DBEAFE", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Search size={16} strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: "#0E2A52", margin: 0 }}>Consultar estado de tu ticket</h2>
+              </div>
+              <Fl label="N° de ticket, cédula o celular" req>
+                <input style={is} placeholder="Ej. TK-00001, 71987654 o 3001234567" value={tid} onChange={e => setTid(e.target.value)} />
+              </Fl>
+              {tid && (() => {
+                const tidNorm = tid.trim().toUpperCase();
+                const tidPlain = tid.trim();
+                const all = [...d.tickets, ...d.solved.map(t => ({ ...t, st: "SOLUCIONADO" }))];
+                const found = all.filter(t => {
+                  if (!t.id) return false;
+                  const cl = d.clients.find(c => c.id === t.cid);
+                  return t.id.toUpperCase() === tidNorm
+                    || (cl?.nit || "").replace(/[^0-9]/g, "") === tidPlain.replace(/[^0-9]/g, "")
+                    || (cl?.phone || "").replace(/[^0-9]/g, "") === tidPlain.replace(/[^0-9]/g, "");
+                });
+                if (!found.length) return <div style={{ textAlign: "center", padding: 24, color: "#94A3B8", fontSize: 12 }}>No se encontró ningún ticket con esa búsqueda.</div>;
+                return found.map(t => {
+                  const cl = d.clients.find(c => c.id === t.cid);
+                  const sl = t.st !== "SOLUCIONADO" ? slaS(t) : null;
+                  const ev = (d.events || []).find(e => e.cid === t.cid && e.date);
+                  const isSolved = t.st === "SOLUCIONADO";
+                  return <button key={t.id} onClick={() => setDetailTicket(t)} title="Ver trazabilidad completa del ticket"
+                    style={{ width: "100%", textAlign: "left", background: "#F5F7FB", borderRadius: 14, padding: 16, marginTop: 12, border: `1px solid #E2E8F0`, cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#EEF2F7"; e.currentTarget.style.borderColor = "#2563FF"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(37,99,255,0.15)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#F5F7FB"; e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "center" }}>
+                      <span style={{ fontFamily: "monospace", fontSize: 12, color: "#64748B", fontWeight: 600 }}>{t.id}</span>
+                      <Tg>{t.st || "SOLUCIONADO"}</Tg>
+                    </div>
+                    <div style={{ fontWeight: 700, color: "#0E2A52", fontSize: 14 }}>{t.inc}</div>
+                    <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 3 }}>{cl?.name}</div>
+                    {t.tech && <div style={{ fontSize: 11.5, color: "#3B82F6", marginTop: 6 }}>👤 Técnico: <strong>{t.tech}</strong></div>}
+                    {sl && <div style={{ fontSize: 11.5, marginTop: 4, color: sl.s === "exp" ? "#EF4444" : sl.s === "warn" ? "#F59E0B" : "#10B981" }}>⏱ SLA: {sl.l}</div>}
+                    {ev && <div style={{ fontSize: 11.5, color: "#7C3AED", marginTop: 4 }}>📅 Visita: <strong>{ev.date}</strong> {ev.time} — {ev.tech}</div>}
+                    {t.sol && <div style={{ fontSize: 11.5, color: "#10B981", marginTop: 4 }}>✅ {t.sol}</div>}
+                    <div style={{ marginTop: 10, fontSize: 11, color: "#2563FF", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      Ver detalle completo →
+                    </div>
+                  </button>;
+                });
+              })()}
+            </div>
+          )}
+
+          {tab === "rate" && (() => {
+            const ridVal = rid.trim();
+            const ridUp = ridVal.toUpperCase();
+            // Buscar primero en resueltos
+            const t = d.solved.find(x =>
+              x.id === ridUp || x.id === ridVal ||
+              d.clients.find(c => c.id === x.cid)?.phone === ridVal ||
+              d.clients.find(c => c.id === x.cid)?.nit === ridVal
+            );
+            // Buscar en activos (ticket existe pero no está resuelto aún)
+            const tActive = !t && d.tickets.find(x =>
+              x.id === ridUp || x.id === ridVal ||
+              d.clients.find(c => c.id === x.cid)?.phone === ridVal ||
+              d.clients.find(c => c.id === x.cid)?.nit === ridVal
+            );
+            return <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FEF3C7", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Star size={16} strokeWidth={2} />
+                </div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: "#0E2A52", margin: 0 }}>Califica nuestro servicio</h2>
+              </div>
+              <Fl label="N° de ticket o celular registrado" req>
+                <input style={is} placeholder="Ej. TK-12345 o 300 123 4567" value={rid} onChange={e => setRid(e.target.value)} />
+              </Fl>
+              {ridVal && tActive && (
+                <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 12, padding: "12px 16px", marginTop: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>⏳</span>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#1E40AF" }}>Ticket en proceso — aún no puedes calificar</div>
+                    <div style={{ fontSize: 11, color: "#3B82F6", marginTop: 3 }}>Tu ticket <strong>{tActive.id}</strong> está <strong>{tActive.st}</strong>. Podrás calificar el servicio una vez que esté marcado como solucionado.</div>
+                  </div>
+                </div>
+              )}
+              {ridVal && !t && !tActive && (
+                <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 12, padding: "12px 16px", marginTop: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>🔍</span>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#92400E" }}>Ticket no encontrado</div>
+                    <div style={{ fontSize: 11, color: "#B45309", marginTop: 2 }}>Verifica el número de ticket o ingresa tu celular registrado. Solo aparecen tickets solucionados.</div>
+                  </div>
+                </div>
+              )}
+              {t && t.rated && (
+                <div style={{ textAlign: "center", padding: 24 }}>
+                  <div style={{ fontSize: 42, color: "#F59E0B" }}>{"★".repeat(t.sat)}{"☆".repeat(5 - t.sat)}</div>
+                  <div style={{ color: "#10B981", fontWeight: 700, fontSize: 14, marginTop: 8 }}>¡Ya calificaste este ticket!</div>
+                </div>
+              )}
+              {t && !t.rated && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ background: "#F5F7FB", borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid #E2E8F0` }}>
+                    <div style={{ fontWeight: 700, color: "#0E2A52", fontSize: 13 }}>{t.inc}</div>
+                    <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 4 }}>Técnico: {t.tech}</div>
+                  </div>
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <div style={{ fontSize: 12.5, color: "#64748B", marginBottom: 10 }}>¿Cómo calificarías el servicio?</div>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                      {[1, 2, 3, 4, 5].map(s => <button key={s} onClick={() => setRat(s)} style={{ width: 50, height: 50, borderRadius: 12, border: "none", cursor: "pointer", background: rat >= s ? "linear-gradient(135deg, #FCD34D, #F59E0B)" : "#F1F5F9", color: rat >= s ? "#FFFFFF" : "#CBD5E1", fontSize: 24, fontWeight: 700, fontFamily: "inherit", transition: "all .15s", boxShadow: rat >= s ? "0 4px 12px rgba(245,158,11,0.4)" : "none" }}>★</button>)}
+                    </div>
+                  </div>
+                  <Fl label="Comentario (opcional)"><textarea style={{ ...is, minHeight: 70 }} placeholder="Cuéntanos qué te pareció el servicio..." value={cmt} onChange={e => setCmt(e.target.value)} /></Fl>
+                  <button onClick={rate} disabled={!rat} style={{ width: "100%", padding: "12px 24px", borderRadius: 10, border: "none", background: !rat ? "#CBD5E1" : "linear-gradient(135deg, #10B981, #059669)", color: "#FFFFFF", fontSize: 13, fontWeight: 700, cursor: !rat ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: !rat ? "none" : "0 8px 24px rgba(16,185,129,0.35)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <Send size={14} /> Enviar Calificación
+                  </button>
+                </div>
+              )}
+            </div>;
+          })()}
+
+          {tab === "rated" && (
+            <div style={{ textAlign: "center", padding: 30 }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #FEF3C7, #FDE68A)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <Star size={36} color="#F59E0B" fill="#F59E0B" />
+              </div>
+              <h3 style={{ color: "#0E2A52", fontSize: 22, fontWeight: 700 }}>¡Gracias!</h3>
+              <p style={{ color: "#64748B", fontSize: 13, marginTop: 6 }}>Tu opinión nos ayuda a mejorar nuestro servicio.</p>
+            </div>
+          )}
+        </div>
+
+      </div>}
+
+      {/* SIDEBAR INFO — solo visible en la pantalla inicial (antes de abrir un formulario) */}
+      {!panelOpen && (
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }} data-portal-sidebar-grid>
+
+          {/* ¿Qué ocurre después? */}
+          <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", borderRadius: 18, padding: 18, color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF", margin: "0 0 14px", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 16 }}>📋</span> ¿Qué ocurre después?
+            </h3>
+            {[
+              { icon: Mail,       title: "Recibimos tu solicitud",    desc: "Asignamos un número de incidente",              color: "#60A5FA", bg: "rgba(59,130,246,0.2)" },
+              { icon: Activity,   title: "Analizamos y priorizamos", desc: "Nuestra IA evalúa la urgencia y complejidad",   color: "#A78BFA", bg: "rgba(124,58,237,0.2)" },
+              { icon: Headphones, title: "Te contactamos",            desc: "Un técnico especializado se comunicará contigo", color: "#FCD34D", bg: "rgba(245,158,11,0.2)" },
+              { icon: CheckCircle, title: "Damos solución",           desc: "Te mantenemos informado hasta resolver tu caso", color: "#34D399", bg: "rgba(16,185,129,0.2)" }
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, padding: "9px 0", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: s.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <s.icon size={14} color={s.color} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#F1F5F9" }}>{s.title}</div>
+                  <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2, lineHeight: 1.4 }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Consejos rápidos */}
+          <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", borderRadius: 18, padding: 18, color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF", margin: "0 0 12px", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 16 }}>💡</span> Consejos rápidos
+            </h3>
+            {quickTips.map((tip, i) => (
+              <button key={i} onClick={() => { setTab("form"); setPanelOpen(true); sf(p => ({ ...p, desc: tip })); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "8px 0", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", color: "#CBD5E1", fontSize: 11.5, fontWeight: 500, textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#A78BFA"}
+                onMouseLeave={e => e.currentTarget.style.color = "#CBD5E1"}>
+                <span><span style={{ color: "#7C3AED", marginRight: 6 }}>●</span>{tip}</span>
+                <span style={{ color: "#475569" }}>›</span>
+              </button>
+            ))}
+          </div>
+
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <div data-portal-footer style={{ marginTop: 20, padding: "18px 16px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.06)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, alignItems: "start" }}>
+
+        {/* Col 1 — Seguridad */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #7C3AED, #2563FF)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 12px rgba(124,58,237,0.4)" }}>
+              <Shield size={18} color="#FFFFFF" strokeWidth={2} />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>Seguridad y confianza</div>
+          </div>
+          <div style={{ fontSize: 10.5, color: "#94A3B8", lineHeight: 1.5 }}>Tu información está protegida con cifrado SSL y estándares de seguridad empresarial.</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["🔒 SSL", "✅ Verificado"].map(b => (
+              <span key={b} style={{ fontSize: 9.5, background: "rgba(124,58,237,0.2)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 20, padding: "3px 8px", color: "#C4B5FD", fontWeight: 600 }}>{b}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Col 2 — SisteKore branding */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 32, width: "auto", opacity: 0.9 }} />
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#FFFFFF", letterSpacing: 2 }}>SisteKore</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 10.5, color: "#94A3B8", lineHeight: 1.5 }}>Tecnología que impulsa<br />tu operación</div>
+          <div style={{ fontSize: 10, color: "#64748B" }}>© 2026 SisteKore</div>
+        </div>
+
+        {/* Col 3 — Redes + WhatsApp */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+          {/* Redes sociales */}
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#FFFFFF" }}>Síguenos</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {/* Facebook */}
+            <a href="https://www.facebook.com/sistekore" target="_blank" rel="noopener noreferrer" title="Facebook — SisteKore" style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(24,119,242,0.2)", border: "1px solid rgba(24,119,242,0.5)", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", transition: "all .2s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1877F2"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(24,119,242,0.5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(24,119,242,0.2)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            </a>
+            {/* Instagram */}
+            <a href="https://www.instagram.com/sistekore" target="_blank" rel="noopener noreferrer" title="Instagram — SisteKore" style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(225,48,108,0.2)", border: "1px solid rgba(225,48,108,0.5)", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", transition: "all .2s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(225,48,108,0.5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(225,48,108,0.2)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            </a>
+          </div>
+          {/* WhatsApp — dos números */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", alignItems: "flex-end" }}>
+            <div style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>WhatsApp</div>
+            <a href="https://wa.me/573015287543?text=Hola%2C%20necesito%20soporte%20t%C3%A9cnico%20de%20SisteKore" target="_blank" rel="noopener noreferrer" title="Soporte técnico" style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 10, background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.35)", textDecoration: "none", transition: "all .15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(37,211,102,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(37,211,102,0.15)"; }}>
+              <WAIcon size={13} color="#25D366" />
+              <div>
+                <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, lineHeight: 1 }}>Soporte</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>301 528 7543</div>
+              </div>
+            </a>
+            <a href="https://wa.me/573157420568?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20SisteKore" target="_blank" rel="noopener noreferrer" title="Comercial" style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 10, background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.35)", textDecoration: "none", transition: "all .15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(37,211,102,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(37,211,102,0.15)"; }}>
+              <WAIcon size={13} color="#25D366" />
+              <div>
+                <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, lineHeight: 1 }}>Comercial</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>315 742 0568</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: "center", padding: "16px 0 32px", fontSize: 11, color: "#475569" }}>
+        SisteKore · Medellín, Colombia · sistekore@gmail.com
+      </div>
+    </div>
+
+    {/* MODAL: Detalle completo del ticket — público, sin necesidad de login */}
+    {detailTicket && (() => {
+      const t = detailTicket;
+      const cl = d.clients.find(c => c.id === t.cid);
+      const sl = t.st !== "SOLUCIONADO" ? slaS(t) : null;
+      const ev = (d.events || []).find(e => e.cid === t.cid && e.date);
+      const isSolved = t.st === "SOLUCIONADO";
+      const trace = t.trace || [];
+      return (
+        <div onClick={() => setDetailTicket(null)} style={{ position: "fixed", inset: 0, background: "rgba(10,21,53,0.7)", backdropFilter: "blur(8px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, maxHeight: "90vh", background: "#FFFFFF", borderRadius: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {/* Header */}
+            <div style={{ padding: "18px 22px", background: "linear-gradient(135deg, #F5F3FF, #EDE9FE)", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontFamily: "monospace", fontSize: 11, color: "#7C3AED", fontWeight: 700 }}>{t.id}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#0E2A52", marginTop: 2 }}>{t.inc}</div>
+              </div>
+              <button onClick={() => setDetailTicket(null)} style={{ background: "none", border: "none", color: "#64748B", fontSize: 24, cursor: "pointer", padding: 4, fontFamily: "inherit" }}>×</button>
+            </div>
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+              {/* Datos básicos */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                <div style={{ padding: "10px 12px", background: "#F5F7FB", borderRadius: 10 }}>
+                  <div style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase" }}>Estado</div>
+                  <div style={{ marginTop: 4 }}><Tg>{t.st || "SOLUCIONADO"}</Tg></div>
+                </div>
+                <div style={{ padding: "10px 12px", background: "#F5F7FB", borderRadius: 10 }}>
+                  <div style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase" }}>Prioridad</div>
+                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: t.pri === "URGENTE" ? "#DC2626" : t.pri === "MEDIA" ? "#D97706" : "#2563FF" }}>{t.pri || "—"}</div>
+                </div>
+                <div style={{ padding: "10px 12px", background: "#F5F7FB", borderRadius: 10 }}>
+                  <div style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase" }}>Cliente</div>
+                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: "#0E2A52" }}>{cl?.name || "—"}</div>
+                </div>
+                <div style={{ padding: "10px 12px", background: "#F5F7FB", borderRadius: 10 }}>
+                  <div style={{ fontSize: 9.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase" }}>Técnico</div>
+                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 700, color: "#0E2A52" }}>{t.tech || "Sin asignar"}</div>
+                </div>
+              </div>
+              {/* SLA */}
+              {sl && (
+                <div style={{ padding: "12px 14px", background: sl.s === "exp" ? "#FEE2E2" : sl.s === "warn" ? "#FEF3C7" : "#D1FAE5", border: `1px solid ${sl.s === "exp" ? "#FCA5A5" : sl.s === "warn" ? "#FCD34D" : "#6EE7B7"}`, borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                  <Clock size={18} color={sl.s === "exp" ? "#DC2626" : sl.s === "warn" ? "#D97706" : "#059669"} />
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: sl.s === "exp" ? "#7F1D1D" : sl.s === "warn" ? "#78350F" : "#064E3B", textTransform: "uppercase" }}>SLA</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0E2A52", marginTop: 2 }}>{sl.l}</div>
+                  </div>
+                </div>
+              )}
+              {/* Visita agendada */}
+              {ev && (
+                <div style={{ padding: "12px 14px", background: "#EDE9FE", border: "1px solid #C4B5FD", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                  <Calendar size={18} color="#7C3AED" />
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", textTransform: "uppercase" }}>Visita programada</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0E2A52", marginTop: 2 }}>{ev.date} a las {ev.time} — {ev.tech}</div>
+                  </div>
+                </div>
+              )}
+              {/* Descripción del incidente */}
+              {t.desc && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 10.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Descripción del incidente</div>
+                  <div style={{ padding: "10px 14px", background: "#F5F7FB", borderRadius: 10, fontSize: 12.5, color: "#0E2A52", lineHeight: 1.5 }}>{t.desc}</div>
+                </div>
+              )}
+              {/* Solución (si está resuelto) */}
+              {isSolved && t.sol && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 10.5, color: "#059669", fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>✅ Solución aplicada</div>
+                  <div style={{ padding: "10px 14px", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 10, fontSize: 12.5, color: "#064E3B", lineHeight: 1.5 }}>{t.sol}</div>
+                </div>
+              )}
+              {/* Trazabilidad (timeline) */}
+              {trace.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10.5, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase", marginBottom: 10 }}>Trazabilidad del caso ({trace.length} eventos)</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {trace.map((e, i) => (
+                      <div key={i} style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#7C3AED", marginTop: 6, flexShrink: 0 }} />
+                        <div style={{ flex: 1, padding: "8px 12px", background: "#F5F7FB", borderRadius: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3, flexWrap: "wrap", gap: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", textTransform: "uppercase" }}>{e.type}</span>
+                            <span style={{ fontSize: 10, color: "#94A3B8", fontFamily: "monospace" }}>{(e.ts || "").slice(0, 16).replace("T", " ")}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#0E2A52" }}>{e.text}</div>
+                          {e.tech && <div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>👤 {e.tech}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {trace.length === 0 && (
+                <div style={{ padding: 20, textAlign: "center", color: "#94A3B8", fontSize: 12, background: "#F5F7FB", borderRadius: 10 }}>
+                  Aún no hay actividad registrada en este ticket.
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div style={{ padding: "12px 22px", borderTop: "1px solid #E2E8F0", background: "#F5F7FB", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <span style={{ fontSize: 10.5, color: "#64748B" }}>¿Necesitas ayuda? <a href="https://wa.me/573015287543" target="_blank" rel="noopener noreferrer" style={{ color: "#10B981", fontWeight: 700, textDecoration: "none" }}>WhatsApp Soporte</a></span>
+              <button onClick={() => setDetailTicket(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563FF, #7C3AED)", color: "#FFFFFF", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    {/* EDDY chatbot — DESACTIVADO en Portal Cliente.
+        El cliente solo necesita reportar, consultar y calificar; Eddy es exclusivo del equipo interno. */}
+  </div>;
+}
+
+/* === MAIN APP === */
+function useIsMobile() {
+  const [m, setM] = useState(typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+// Estado inicial COMPLETAMENTE VACÍO — sin mock data (excepto KB que tiene contenido base)
+const EMPTY_DATA = {
+  clients: [], tickets: [], solved: [], inv: [], events: [], notifications: [], audit: [], kb: []
+};
+
+// Artículos base del Centro de Conocimiento — se cargan si la BD está vacía
+function defaultKb() {
+  return [
+    { id: "K1", cat: "Redes",        title: "Diagnóstico WiFi",         body: "1. Verificar luz módem (verde fija)\n2. Test cable directo\n3. Speedtest.net\n4. Cambiar canal WiFi (1, 6, 11)\n5. DNS: 8.8.8.8 / 8.8.4.4\n6. Reinicio 60 seg", keywords: "wifi router internet velocidad lentitud conexion", pdfUrl: "", icon: "Wifi", author: "Alexander Ospina", createdAt: "2026-04-15", updatedAt: "2026-04-15", views: 1240 },
+    { id: "K2", cat: "Impresoras",   title: "HP LaserJet fuera de línea", body: "1. Reiniciar cola de impresión\n2. Verificar conexión USB/Red\n3. Reinstalar driver desde hp.com\n4. Verificar tóner y papel", keywords: "hp laserjet impresora offline fuera linea cola", pdfUrl: "", icon: "Printer", author: "Alexander Ospina", createdAt: "2026-04-10", updatedAt: "2026-04-10", views: 980 },
+    { id: "K3", cat: "Equipos",      title: "Pantalla azul (BSOD)",      body: "1. Anotar código de error\n2. MemTest86 para RAM\n3. SFC /scannow en CMD admin\n4. CrystalDiskInfo para disco\n5. Verificar temperaturas", keywords: "bsod pantalla azul windows error memoria ram disco", pdfUrl: "", icon: "Monitor", author: "Alexander Ospina", createdAt: "2026-04-08", updatedAt: "2026-04-08", views: 540 },
+    { id: "K4", cat: "Seguridad",    title: "Protocolo ransomware",      body: "⚠️ URGENTE — Max 30 min\n1. DESCONECTAR de red ya\n2. NO apagar el equipo\n3. Fotos de pantalla\n4. Llamar a Alexander\n5. NO pagar rescate", keywords: "ransomware virus malware seguridad urgente cifrado", pdfUrl: "", icon: "ShieldAlert", author: "Alexander Ospina", createdAt: "2026-04-05", updatedAt: "2026-04-20", views: 610 },
+    { id: "K5", cat: "Cámaras",      title: "DVR/NVR no graba",          body: "1. Espacio en disco\n2. Config de grabación\n3. Cámaras asignadas\n4. Reiniciar DVR/NVR\n5. Alimentación cámaras", keywords: "dvr nvr camara grabacion video vigilancia cctv", pdfUrl: "", icon: "Cctv", author: "Alexander Ospina", createdAt: "2026-04-03", updatedAt: "2026-04-03", views: 455 },
+    { id: "K6", cat: "Procesos",     title: "Acta de Visita Técnica",    body: "Formato estándar SisteKore\n1. Datos generales\n2. Cliente y equipos\n3. Descripción problema\n4. Pruebas realizadas\n5. Diagnóstico\n6. Acciones + Resultado\n7. Firmas", keywords: "acta visita formato procedimiento documento firma cliente", pdfUrl: "", icon: "ClipboardList", author: "Alexander Ospina", createdAt: "2026-04-01", updatedAt: "2026-04-01", views: 720 },
+    { id: "K7", cat: "Impresoras",   title: "HP LaserJet no imprime",    body: "1. Verificar conexión\n2. Restaurar cola de impresión\n3. Verificar tóner\n4. Reinstalar driver", keywords: "hp imprime no driver toner cola", pdfUrl: "", icon: "Printer", author: "Alexander Ospina", createdAt: "2026-04-12", updatedAt: "2026-04-12", views: 320 },
+    { id: "K8", cat: "Equipos",      title: "Error 0x0000007B",          body: "1. Reiniciar equipo en modo seguro\n2. Verificar SATA y boot order\n3. Reparar arranque con USB Windows", keywords: "error 0x0000007b windows arranque boot bsod", pdfUrl: "", icon: "Laptop", author: "Alexander Ospina", createdAt: "2026-04-09", updatedAt: "2026-04-09", views: 280 },
+    { id: "K9", cat: "Atención cliente", title: "Cómo escribir un correo de seguimiento", body: "Plantilla SisteKore\n1. Saludo personalizado\n2. Recordatorio de la visita\n3. Acciones tomadas\n4. Próximos pasos\n5. Firma", keywords: "correo email seguimiento cliente plantilla", pdfUrl: "", icon: "Headphones", author: "Erika Julieth", createdAt: "2026-04-07", updatedAt: "2026-04-07", views: 195 },
+    { id: "K10", cat: "Comercial",   title: "Guion de cierre Plan Pro",  body: "1. Confirmar presupuesto\n2. Mostrar ROI mensual\n3. Caso de éxito real\n4. Cierre con sentido de urgencia", keywords: "ventas cierre plan pro guion comercial", pdfUrl: "", icon: "Briefcase", author: "Erika Julieth", createdAt: "2026-04-06", updatedAt: "2026-04-06", views: 165 },
+    { id: "K11", cat: "Comercial",   title: "Cotización inicial · plantilla", body: "Plantilla con: Datos del cliente · Alcance · Items · Subtotal · IVA · Total · Vigencia · Forma de pago", keywords: "cotizacion plantilla ventas formato precio", pdfUrl: "", icon: "FileText", author: "Erika Julieth", createdAt: "2026-04-04", updatedAt: "2026-04-04", views: 142 },
+    { id: "K12", cat: "Otros",       title: "Onboarding nuevo técnico",  body: "1. Crear usuario en SisteKore\n2. Asignar permisos\n3. Inducción de marca\n4. Tour por módulos\n5. Acompañamiento primeras 2 semanas", keywords: "onboarding tecnico nuevo capacitacion", pdfUrl: "", icon: "BookOpen", author: "Alexander Ospina", createdAt: "2026-04-02", updatedAt: "2026-04-02", views: 98 }
+  ];
+}
+
+// Aplicar tema guardado al cargar (antes de pintar la app)
+if (typeof window !== "undefined") {
+  try {
+    const savedTheme = localStorage.getItem("sistekore-theme");
+    if (savedTheme === "oscuro") {
+      document.documentElement.style.filter = "invert(0.92) hue-rotate(180deg)";
+    } else if (savedTheme === "sistema") {
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDark) document.documentElement.style.filter = "invert(0.92) hue-rotate(180deg)";
+    }
+  } catch (e) {}
+}
+
+export default function App() {
+  const isMobile = useIsMobile();
+  // Página actual — persistente en localStorage para sobrevivir F5
+  const [page, setPage] = useState(() => {
+    try { return localStorage.getItem("sistekore-page") || "dashboard"; } catch (e) { return "dashboard"; }
+  });
+  // Persistir cambios de página
+  useEffect(() => {
+    try { localStorage.setItem("sistekore-page", page); } catch (e) {}
+  }, [page]);
+  const [sideOpen, setSideOpen] = useState(false);
+  const [col, setCol] = useState(false);
+  // === DATA: arranca VACÍA, se llena desde Supabase ===
+  const [data, setData] = useState(EMPTY_DATA);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | error | ok
+  // === AUTH STATE ===
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  // Escuchar cambios de sesión
+  useEffect(() => {
+    if (!supabase) { setAuthLoading(false); return; }
+    let mounted = true;
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!mounted) return;
+      setSession(s);
+      setAuthLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!mounted) return;
+      setSession(s);
+    });
+    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
+  }, []);
+  // === PROFILES: estado de aprobación + admin panel ===
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [pendingProfiles, setPendingProfiles] = useState([]);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  // Fetch del perfil del usuario actual cuando hay sesión
+  useEffect(() => {
+    if (!session?.user || !supabase) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle()
+      .then(({ data, error }) => {
+        if (error) console.error("[profile] fetch error:", error);
+        setProfile(data || null);
+        setProfileLoading(false);
+      });
+  }, [session]);
+  // ¿El usuario actual es admin? (Alexander = dir_operativo, Erika = dir_comercial)
+  const isAdmin = profile?.role === "dir_operativo" || profile?.role === "dir_comercial";
+  // Cargar lista de pendientes (solo admins)
+  async function refreshPending() {
+    if (!supabase) return;
+    const { data } = await supabase.from("profiles").select("*").in("status", ["pending", "rejected"]).order("created_at", { ascending: false });
+    setPendingProfiles(data || []);
+  }
+  useEffect(() => {
+    if (!isAdmin) { setPendingProfiles([]); return; }
+    refreshPending();
+    const t = setInterval(refreshPending, 30000); // refrescar cada 30s
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+  // Acciones admin
+  async function approveUser(userId, role) {
+    if (!supabase || !profile) return;
+    // 1. Aprobar en profiles
+    const { error } = await supabase.from("profiles").update({
+      status: "approved",
+      role: role || "aux_operativo",
+      approved_at: new Date().toISOString(),
+      approved_by: profile.id
+    }).eq("id", userId);
+    if (error) { alert("Error: " + error.message); return; }
+    // 2. Confirmar email en auth.users (via RPC) — esto permite que el usuario pueda loguear
+    try {
+      await supabase.rpc("confirm_user_email", { user_id: userId });
+    } catch (e) {
+      console.warn("[approveUser] No se pudo confirmar email automáticamente:", e);
+    }
+    await refreshPending();
+    alert(`✅ Usuario aprobado. Ya puede iniciar sesión.`);
+  }
+  async function rejectUser(userId) {
+    if (!supabase) return;
+    const { error } = await supabase.from("profiles").update({ status: "rejected" }).eq("id", userId);
+    if (error) { alert("Error: " + error.message); return; }
+    await refreshPending();
+  }
+  async function deleteProfile(userId, email) {
+    if (!supabase) return;
+    if (!window.confirm(`¿Eliminar definitivamente al usuario ${email}? Esto NO borra su cuenta auth, solo su perfil.`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    if (error) { alert("Error: " + error.message); return; }
+    await refreshPending();
+  }
+  async function resetUserPassword(email) {
+    if (!supabase) return;
+    if (!window.confirm(`¿Enviar enlace de restablecimiento de contraseña a ${email}?`)) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
+    if (error) alert("Error: " + error.message);
+    else alert(`✅ Enlace enviado a ${email}. Revisa el inbox (y spam).`);
+  }
+  // Cargar datos reales desde Supabase al inicio
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await loadAllFromSupabase();
+        if (cancelled) return;
+        if (remote) {
+          // Si Centro de Conocimiento está vacío, sembrarlo con los artículos base
+          if (!remote.kb || remote.kb.length === 0) {
+            remote.kb = defaultKb();
+            // Persistir la semilla
+            saveCollection("kb", remote.kb).catch(e => console.warn("[App] No se pudo sembrar kb:", e));
+          }
+          setData(prev => ({ ...prev, ...remote }));
+        }
+        setDataLoaded(true);
+      } catch (e) {
+        console.error("[App] Error cargando Supabase:", e);
+        setDataLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  // Auto-sync: cuando data cambia, guarda cada colección con debounce
+  const syncTimersRef = useRef({});
+  const lastSnapshotRef = useRef(null);
+  useEffect(() => {
+    if (!dataLoaded) return;
+    // Snapshot previo para detectar qué colecciones cambiaron
+    const prev = lastSnapshotRef.current;
+    const cols = ["clients", "tickets", "solved", "inv", "events", "notifications", "audit", "kb"];
+    cols.forEach(key => {
+      if (!prev || prev[key] !== data[key]) {
+        // Debounce 500ms por colección
+        if (syncTimersRef.current[key]) clearTimeout(syncTimersRef.current[key]);
+        syncTimersRef.current[key] = setTimeout(async () => {
+          setSyncStatus("syncing");
+          await saveCollection(key, data[key] || []);
+          setSyncStatus("ok");
+          setTimeout(() => setSyncStatus("idle"), 1500);
+        }, 500);
+      }
+    });
+    lastSnapshotRef.current = { ...data };
+  }, [data, dataLoaded]);
+  const [users, setUsers] = useState([]);
+  // Sync de la lista de usuarios a Supabase
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const t = setTimeout(() => { saveCollection("users", users); }, 500);
+    return () => clearTimeout(t);
+  }, [users, dataLoaded]);
+  // Restaurar usuarios desde Supabase si existen
+  useEffect(() => {
+    if (!dataLoaded) return;
+    (async () => {
+      const remote = await loadAllFromSupabase();
+      if (remote && Array.isArray(remote.users) && remote.users.length > 0) {
+        setUsers(remote.users);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoaded]);
+  // Auto-crear usuario en BD cuando alguien se loguea por primera vez
+  useEffect(() => {
+    if (!session?.user?.email || !dataLoaded) return;
+    const email = session.user.email.toLowerCase();
+    const exists = users.some(u => (u.email || "").toLowerCase() === email);
+    if (!exists) {
+      const name = session.user.user_metadata?.full_name || email.split("@")[0];
+      const initials = name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+      setUsers(prev => [...prev, {
+        id: session.user.id,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        role: prev.length === 0 ? "dir_operativo" : "aux_operativo",
+        email: session.user.email,
+        phone: "",
+        av: initials,
+        on: true
+      }]);
+    }
+  }, [session, dataLoaded, users]);
+  // === Usuario actual (cu) — derivado de la sesión de Supabase ===
+  // Si el email del usuario autenticado existe en `users` → usar ese.
+  // Si no, crear un usuario "fantasma" con datos básicos del email.
+  const sessionEmail = session?.user?.email || "";
+  const derivedUser = users.find(u => u.email && u.email.toLowerCase() === sessionEmail.toLowerCase());
+  const [manualCu, setManualCu] = useState(null); // override manual desde "Cambiar usuario"
+  const cu = manualCu || derivedUser || {
+    id: session?.user?.id || "U_GUEST",
+    name: sessionEmail.split("@")[0] || "Invitado",
+    role: "dir_operativo",
+    email: sessionEmail,
+    phone: "",
+    av: (sessionEmail[0] || "?").toUpperCase(),
+    on: true
+  };
+  const setCu = (u) => {
+    setManualCu(typeof u === "function" ? u(manualCu) : u);
+    try { if (u?.id) localStorage.setItem("sistekore-cu", u.id); } catch (e) {}
+  };
+  const [showN, setShowN] = useState(false);
+  // === ROUTING basado en sesión + override por query param ===
+  // - Si URL tiene ?view=portal → forzar portal (vista preview para usuarios logueados)
+  // - Si hay sesión activa → "internal" (ERP)
+  // - Si NO hay sesión → "portal" (landing pública)
+  const forcePortal = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "portal";
+  const view = forcePortal ? "portal" : (session ? "internal" : "portal");
+  // Helper "noop" para compatibilidad con código existente que llamaba a setView.
+  const setView = () => {};
+  // Modal de login
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: "", password: "", mode: "signin" });
+  const [loginError, setLoginError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  async function handleLogin(e) {
+    if (e?.preventDefault) e.preventDefault();
+    if (!loginForm.email || !loginForm.password) { setLoginError("Email y contraseña son obligatorios"); return; }
+    setLoginLoading(true);
+    setLoginError("");
+    setLoginSuccess("");
+    try {
+      if (loginForm.mode === "signup") {
+        // Usamos un endpoint serverless de Vercel que tiene permisos admin
+        // para crear el usuario con email_confirm:true (sin requerir SMTP).
+        const resp = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginForm.email, password: loginForm.password })
+        });
+        const result = await resp.json();
+        if (!resp.ok) {
+          setLoginError(result.error || "Error al crear la cuenta");
+        } else {
+          setLoginSuccess(`✅ ¡Solicitud recibida! Tu cuenta (${loginForm.email}) quedó PENDIENTE de aprobación. Un administrador la revisará y te notificaremos cuando esté activa. Por ahora no puedes ingresar.`);
+          setLoginForm(p => ({ ...p, password: "", mode: "signin" }));
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email, password: loginForm.password });
+        if (error) {
+          setLoginError(error.message);
+        } else {
+          setLoginOpen(false);
+          setLoginForm({ email: "", password: "", mode: "signin" });
+        }
+      }
+    } catch (err) {
+      setLoginError(err.message || "Error inesperado");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+  async function handleLogout() {
+    try { await supabase.auth.signOut(); } catch (e) {}
+    try {
+      localStorage.removeItem("sistekore-page");
+      localStorage.removeItem("sistekore-had-session");
+    } catch (e) {}
+    setPage("dashboard");
+  }
+  const [tkInitTab, setTkInitTab] = useState(null);
+  const [tkHighlightId, setTkHighlightId] = useState(null);
+  // Menú de perfil del usuario (topbar)
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showUserSwitch, setShowUserSwitch] = useState(false);
+  const [profileModal, setProfileModal] = useState(false);
+  const [settingsModal, setSettingsModal] = useState(false);
+  const profilePhotoRef = useRef(null);
+  const [profileTarget, setProfileTarget] = useState(null);
+  function handleProfilePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1.5 * 1024 * 1024) { alert("La imagen debe pesar menos de 1.5 MB"); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const target = profileTarget || cu;
+      setUsers(prev => prev.map(u => u.id === target.id ? { ...u, photo: ev.target.result } : u));
+      if (target.id === cu.id) setCu(p => ({ ...p, photo: ev.target.result }));
+      setProfileTarget(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+  function logout() {
+    if (!window.confirm("¿Cerrar sesión? Volverás a la pantalla de inicio.")) return;
+    setUserMenuOpen(false);
+    handleLogout();
+  }
+
+  const role = ROLES[cu.role];
+  const sw = isMobile ? 0 : (col ? 58 : 240);
+  const pages = gp(cu.role);
+  const unread = data.notifications.filter(n => !n.read && (!n.toUserId || n.toUserId === cu.id)).length;
+
+  useEffect(() => { if (!pages.includes(page)) setPage(pages[0] || "dashboard"); }, [cu.role]);
+
+  // Auto-encuesta a 8 días después de "entregado"
+  useEffect(() => {
+    function checkSurveys() {
+      const now = Date.now();
+      setData(p => {
+        const pending = p.solved.filter(t => t.surveyAt && !t.surveySent && new Date(t.surveyAt).getTime() <= now);
+        if (pending.length === 0) return p;
+        const newNotifs = pending.map(t => {
+          const cl = p.clients.find(c => c.id === t.cid);
+          return {
+            id: "N" + Date.now() + Math.random(),
+            text: `📧 Encuesta de calificación enviada automáticamente a ${cl?.email || cl?.name || "cliente"} (Ticket ${t.id})`,
+            time: new Date().toISOString(),
+            read: false,
+            type: "info"
+          };
+        });
+        return {
+          ...p,
+          solved: p.solved.map(t => pending.find(x => x.id === t.id) ? { ...t, surveySent: true, surveySentAt: new Date().toISOString() } : t),
+          notifications: [...newNotifs, ...p.notifications]
+        };
+      });
+    }
+    checkSurveys();
+    const id = setInterval(checkSurveys, 60 * 1000); // chequea cada minuto
+    return () => clearInterval(id);
+  }, []);
+
+  function aa(action, module) {
+    setData(p => ({ ...p, audit: [{ ts: new Date().toISOString(), user: cu.name, action, module }, ...p.audit] }));
+  }
+  function markRead() {
+    setData(p => ({ ...p, notifications: p.notifications.map(n => ({ ...n, read: true })) }));
+  }
+  function markOneRead(id) {
+    setData(p => ({ ...p, notifications: p.notifications.map(n => n.id === id ? { ...n, read: true } : n) }));
+  }
+
+  // Pantalla de carga SOLO en la primera carga (no en re-validaciones por minimizar / cambiar tab)
+  const hadSessionBefore = (typeof window !== "undefined") && localStorage.getItem("sistekore-had-session") === "1";
+  // Marcar que tuvo sesión cuando se confirma
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (session && profile) localStorage.setItem("sistekore-had-session", "1");
+  }, [session, profile]);
+  if (authLoading && !hadSessionBefore) {
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg, #0A1535 0%, #0E1A45 50%, #0A1535 100%)", color: "#FFFFFF", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 60, height: 60, border: "4px solid rgba(255,255,255,0.2)", borderTopColor: "#A855F7", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 1s linear infinite" }} />
+        <div style={{ fontSize: 13, color: "#94A3B8", letterSpacing: 1 }}>Cargando SisteKore...</div>
+      </div>
+    </div>;
+  }
+
+  // Si hay sesión pero el perfil está pendiente o rechazado → pantalla de espera
+  // (sin sesión NO se bloquea — acceso libre temporal)
+  if (session && profile && profile.status !== "approved") {
+    const isPending = profile.status === "pending";
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, background: "linear-gradient(180deg, #0A1535 0%, #0E1A45 50%, #0A1535 100%)", color: "#FFFFFF", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, textAlign: "center" }}>
+        <div style={{ width: 84, height: 84, borderRadius: "50%", background: isPending ? "linear-gradient(135deg, #F59E0B, #D97706)" : "linear-gradient(135deg, #EF4444, #B91C1C)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px", boxShadow: isPending ? "0 8px 28px rgba(245,158,11,0.4)" : "0 8px 28px rgba(239,68,68,0.4)" }}>
+          <span style={{ fontSize: 38 }}>{isPending ? "⏳" : "🚫"}</span>
+        </div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 10px" }}>
+          {isPending ? "Cuenta pendiente de aprobación" : "Acceso rechazado"}
+        </h2>
+        <p style={{ fontSize: 13.5, color: "#CBD5E1", lineHeight: 1.6, margin: "0 0 20px" }}>
+          {isPending
+            ? <>Tu cuenta <strong>{profile.email}</strong> está esperando aprobación del administrador. Te avisaremos por correo cuando sea activada. Esto normalmente toma menos de 24 horas hábiles.</>
+            : <>Tu cuenta fue rechazada. Si crees que es un error, contacta a <strong>sistekore@gmail.com</strong>.</>}
+        </p>
+        <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.06)", borderRadius: 10, marginBottom: 18, fontSize: 11.5, color: "#94A3B8" }}>
+          Email: <strong style={{ color: "#FFFFFF" }}>{profile.email}</strong><br />
+          Estado: <strong style={{ color: isPending ? "#FCD34D" : "#FCA5A5" }}>{isPending ? "PENDIENTE" : "RECHAZADO"}</strong><br />
+          Registrado: {new Date(profile.created_at).toLocaleString("es-CO")}
+        </div>
+        <button onClick={handleLogout} style={{ padding: "10px 22px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#FFFFFF", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          Cerrar sesión
+        </button>
+        <div style={{ marginTop: 24, fontSize: 10.5, color: "#64748B" }}>
+          ¿Necesitas ayuda? <a href="mailto:sistekore@gmail.com" style={{ color: "#A855F7" }}>sistekore@gmail.com</a>
+        </div>
+      </div>
+    </div>;
+  }
+
+  if (view === "portal") return <>
+    <Portal
+      data={data}
+      setData={setData}
+      session={session}
+      requireAuth={(cb) => { if (session) { cb && cb(); } else { setLoginOpen(true); } }}
+      goBack={() => {
+        // Si está logueado → ir al ERP (limpiar el ?view=portal y recargar)
+        // Si no → abrir modal de login
+        if (session) {
+          window.location.href = window.location.origin;
+        } else {
+          setLoginOpen(true);
+        }
+      }}
+      openTicket={(tid, isSolved) => {
+        if (session) {
+          // Limpiar ?view=portal y navegar al ERP en el ticket
+          try { localStorage.setItem("sistekore-page", "tickets"); } catch (e) {}
+          window.location.href = window.location.origin;
+        } else {
+          setLoginOpen(true);
+        }
+      }}
+    />
+    {/* Modal de Login */}
+    {loginOpen && (
+      <div onClick={() => setLoginOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(10,21,53,0.85)", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <form onClick={e => e.stopPropagation()} onSubmit={handleLogin} style={{ width: "100%", maxWidth: 380, background: "#FFFFFF", borderRadius: 18, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
+            <img src="/logo-sistekore.png" alt="SisteKore" style={{ height: 38 }} />
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#0E2A52", letterSpacing: 1 }}>CORE</div>
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0E2A52", margin: "0 0 4px", textAlign: "center" }}>
+            {loginForm.mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
+          </h2>
+          <p style={{ fontSize: 12, color: "#64748B", margin: "0 0 18px", textAlign: "center" }}>
+            {loginForm.mode === "signup" ? "Registra una nueva cuenta para acceder al ERP" : "Accede a tu plataforma SisteKore"}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5 }}>Email</label>
+            <input type="email" autoFocus required value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="tu@correo.com" style={{ padding: "11px 14px", borderRadius: 9, border: "1px solid #E2E8F0", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 4 }}>Contraseña</label>
+            <input type="password" required value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} placeholder="••••••••" style={{ padding: "11px 14px", borderRadius: 9, border: "1px solid #E2E8F0", fontSize: 14, fontFamily: "inherit", outline: "none" }} />
+            {loginError && (
+              <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#991B1B" }}>
+                {loginError}
+              </div>
+            )}
+            {loginSuccess && (
+              <div style={{ background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#065F46", lineHeight: 1.5 }}>
+                {loginSuccess}
+                <div style={{ marginTop: 8, fontSize: 11, color: "#047857" }}>
+                  Si la solicitud es para un servicio pagado, contáctanos:<br />
+                  📧 <strong>sistekore@gmail.com</strong> · 📞 <strong>301 528 7543</strong>
+                </div>
+              </div>
+            )}
+            <button type="submit" disabled={loginLoading} style={{ marginTop: 4, padding: "12px 18px", borderRadius: 10, border: "none", background: loginLoading ? "#94A3B8" : "linear-gradient(135deg, #2563FF, #7C3AED)", color: "#FFFFFF", fontSize: 13.5, fontWeight: 700, cursor: loginLoading ? "wait" : "pointer", fontFamily: "inherit" }}>
+              {loginLoading ? "Procesando..." : (loginForm.mode === "signup" ? "Crear cuenta" : "Iniciar sesión")}
+            </button>
+            <button type="button" onClick={() => { setLoginForm(p => ({ ...p, mode: p.mode === "signup" ? "signin" : "signup" })); setLoginError(""); }} style={{ background: "none", border: "none", color: "#2563FF", fontSize: 12, cursor: "pointer", marginTop: 4, fontFamily: "inherit" }}>
+              {loginForm.mode === "signup" ? "¿Ya tienes cuenta? Inicia sesión" : "¿Primera vez? Crea tu cuenta"}
+            </button>
+          </div>
+        </form>
+      </div>
+    )}
+  </>;
+
+  const pageMap = {
+    dashboard: <PgDash data={data} go={goPage} cu={cu} />,
+    tickets: <PgTk data={data} setData={setData} aa={aa} initTab={tkInitTab} onTabConsumed={() => setTkInitTab(null)} highlightId={tkHighlightId} onHighlightConsumed={() => setTkHighlightId(null)} go={goPage} users={users} cu={cu} />,
+    clients: <PgCl data={data} setData={setData} aa={aa} />,
+    inventory: <PgInv data={data} setData={setData} aa={aa} users={users} />,
+    calendar: <PgCal data={data} setData={setData} aa={aa} go={goPage} users={users} setUsers={setUsers} />,
+    knowledge: <PgKB data={data} setData={setData} aa={aa} />,
+    users: <PgUs users={users} setUsers={setUsers} aa={aa} data={data} go={goPage} />
+  };
+
+  function toggleSide() {
+    if (isMobile) { setSideOpen(!sideOpen); } else { setCol(!col); }
+  }
+  function goPage(p, tab, highlightId) {
+    setPage(p);
+    if (highlightId) {
+      // Auto-detectar si el ticket está en activos o resueltos
+      const isSolved = data.solved.some(t => t.id === highlightId);
+      setTkInitTab(isSolved ? "resueltos" : (tab || "activos"));
+      setTkHighlightId(highlightId);
+    } else if (tab) {
+      setTkInitTab(tab);
+    }
+    if (isMobile) setSideOpen(false);
+  }
+
+  return <div style={{ minHeight: "100vh", background: C.g50, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    {/* === BANNER DE DIAGNÓSTICO DE SUPABASE (visible si hay error) === */}
+    {(supabaseStatus.lastError || !supabaseStatus.initialized) && (
+      <div style={{ background: "#FEE2E2", borderBottom: "2px solid #DC2626", padding: "10px 14px", fontSize: 12, color: "#7F1D1D", fontFamily: "monospace", lineHeight: 1.5, position: "sticky", top: 0, zIndex: 200 }}>
+        <strong>⚠️ Supabase:</strong> {!supabaseStatus.initialized
+          ? `cliente no inicializado — URL: ${supabaseStatus.url ? "OK" : "FALTA"} · KEY: ${supabaseStatus.keyPreview}`
+          : supabaseStatus.lastError}
+        {supabaseStatus.usingFallback && <span style={{ marginLeft: 8, padding: "2px 6px", background: "#FCD34D", color: "#78350F", borderRadius: 4, fontSize: 10 }}>usando fallback hardcoded</span>}
+      </div>
+    )}
+    {/* === FIN BANNER === */}
+    {isMobile && sideOpen && <div onClick={() => setSideOpen(false)} onTouchEnd={(e) => { e.preventDefault(); setSideOpen(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 99, touchAction: "manipulation" }} />}
+    <div style={isMobile ? { position: "fixed", left: sideOpen ? 0 : -260, top: 0, bottom: 0, width: 260, zIndex: 100, transition: "left .3s ease" } : {}}>
+      <Side active={page} go={goPage} col={isMobile ? false : col} toggle={toggleSide} user={cu} all={users} onSw={(u) => { setCu(u); if (isMobile) setSideOpen(false); }} onClose={isMobile ? () => setSideOpen(false) : undefined} isMobile={isMobile} />
+    </div>
+    <div style={{ marginLeft: sw, transition: "margin-left .25s" }}>
+      <div style={{ height: 52, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: `1px solid rgba(226,232,240,0.6)`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 1px 3px rgba(15,23,42,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={toggleSide} style={{ background: "none", border: "none", cursor: "pointer", color: C.navy, padding: 4 }}><Menu size={18} /></button>
+          {!isMobile && <span style={{ fontSize: 10.5, color: C.g400 }}>SisteKore · SisteKore</span>}
+          {isMobile && <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>SisteKore</span>}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 7 }}>
+          {/* Botón ADMIN — solo visible para dir_operativo (Alexander) y dir_comercial (Erika) */}
+          {isAdmin && (
+            <button onClick={() => setAdminPanelOpen(true)} title="Panel de administración de usuarios" style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 5, padding: isMobile ? "5px 9px" : "7px 12px", borderRadius: 9, border: `1px solid ${C.purple}`, background: `${C.purple}10`, color: C.purple, fontSize: isMobile ? 10 : 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+              onMouseEnter={e => { e.currentTarget.style.background = `${C.purple}25`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = `${C.purple}10`; }}>
+              <Shield size={13} />{!isMobile && "Admin"}
+              {pendingProfiles.filter(p => p.status === "pending").length > 0 && (
+                <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9, background: "#EF4444", color: "#FFFFFF", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #FFFFFF", padding: "0 4px" }}>
+                  {pendingProfiles.filter(p => p.status === "pending").length}
+                </span>
+              )}
+            </button>
+          )}
+          {/* Botón Traducir — abre Google Translate */}
+          {/* Indicador de sincronización con Supabase */}
+          {!isMobile && syncStatus !== "idle" && (
+            <div title={syncStatus === "syncing" ? "Guardando en la nube..." : syncStatus === "ok" ? "Datos guardados" : "Error de sincronización"} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 7, background: syncStatus === "ok" ? "#D1FAE5" : syncStatus === "error" ? "#FEE2E2" : "#DBEAFE", color: syncStatus === "ok" ? "#059669" : syncStatus === "error" ? "#DC2626" : "#2563FF", fontSize: 10, fontWeight: 700, transition: "all .2s" }}>
+              {syncStatus === "syncing" && <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Guardando</>}
+              {syncStatus === "ok" && <>✓ Guardado</>}
+              {syncStatus === "error" && <>⚠ Error</>}
+            </div>
+          )}
+          <button title="Traducir esta página al inglés (in-page)" onClick={() => {
+            // Si ya está traducido (cookie googtrans=/es/en presente), volver a español
+            const isTranslated = document.cookie.indexOf("googtrans=/es/en") !== -1;
+            if (isTranslated) {
+              // Eliminar cookie y recargar para volver a ES
+              document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;";
+              document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=" + window.location.hostname + ";";
+              window.location.reload();
+              return;
+            }
+            // Activar traducción: cookie + recargar (Google Translate widget se cargará al recargar)
+            document.cookie = "googtrans=/es/en; path=/;";
+            document.cookie = "googtrans=/es/en; path=/; domain=" + window.location.hostname + ";";
+            window.location.reload();
+          }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: isMobile ? "5px 10px" : "7px 12px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: isMobile ? 10 : 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            🌐{!isMobile && " ES→EN"}
+          </button>
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setShowN(!showN)} style={{ background: "none", border: "none", cursor: "pointer", position: "relative", padding: 3 }}>
+              <Bell size={16} color={C.g500} />
+              {unread > 0 && <div style={{ position: "absolute", top: 0, right: 0, width: 15, height: 15, borderRadius: "50%", background: C.err, color: C.w, fontSize: 8.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</div>}
+            </button>
+            {showN && <NP notifs={data.notifications.filter(n => !n.toUserId || n.toUserId === cu.id)} onRead={markRead} onMarkOneRead={markOneRead} onClick={goPage} onClose={() => setShowN(false)} />}
+          </div>
+          {/* Chip de usuario CLIQUEABLE — abre dropdown */}
+          <div style={{ position: "relative" }}>
+            {!isMobile && (
+              <button onClick={() => setUserMenuOpen(o => !o)} title="Mi perfil" style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 14px 6px 6px", borderRadius: 30, background: userMenuOpen ? `${C.blue}06` : C.w, border: `1px solid ${userMenuOpen ? `${C.blue}40` : C.g200}`, boxShadow: "0 2px 6px rgba(15,23,42,0.04)", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}
+                onMouseEnter={e => { if (!userMenuOpen) { e.currentTarget.style.borderColor = `${C.blue}40`; e.currentTarget.style.background = `${C.blue}04`; } }}
+                onMouseLeave={e => { if (!userMenuOpen) { e.currentTarget.style.borderColor = C.g200; e.currentTarget.style.background = C.w; } }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: cu.photo ? `url(${cu.photo}) center/cover` : `${role?.color}25`, color: role?.color, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `2px solid ${C.w}`, boxShadow: cu.photo ? "0 1px 3px rgba(0,0,0,0.12)" : "none" }}>
+                  {!cu.photo && cu.av}
+                </div>
+                <div style={{ minWidth: 0, textAlign: "left" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, lineHeight: 1.2 }}>{cu.name}</div>
+                  <div style={{ fontSize: 9.5, color: role?.color, fontWeight: 600, marginTop: 1 }}>{role?.label}</div>
+                </div>
+                <ChevronUp size={13} color={C.g400} style={{ transform: userMenuOpen ? "rotate(0deg)" : "rotate(180deg)", transition: ".2s", marginLeft: 2 }} />
+              </button>
+            )}
+            {isMobile && (
+              <button onClick={() => setUserMenuOpen(o => !o)} style={{ width: 36, height: 36, borderRadius: "50%", background: cu.photo ? `url(${cu.photo}) center/cover` : `${role?.color}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: role?.color, flexShrink: 0, border: `2px solid ${C.w}`, boxShadow: cu.photo ? "0 1px 3px rgba(0,0,0,0.12)" : "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                {!cu.photo && cu.av}
+              </button>
+            )}
+
+            {/* DROPDOWN de perfil */}
+            {userMenuOpen && (
+              <>
+                {/* Overlay para cerrar al click fuera */}
+                <div onClick={() => { setUserMenuOpen(false); setShowUserSwitch(false); }} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 280, background: C.w, borderRadius: 14, border: `1px solid ${C.g200}`, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", zIndex: 100, overflow: "hidden" }}>
+                  {/* Header con foto + datos */}
+                  <div style={{ padding: 16, background: `linear-gradient(135deg, ${C.purple}10, ${C.blue}10)`, borderBottom: `1px solid ${C.g100}`, display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ position: "relative", width: 48, height: 48, borderRadius: "50%", background: cu.photo ? `url(${cu.photo}) center/cover` : `${role?.color}30`, color: role?.color, fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `3px solid ${C.w}`, boxShadow: "0 4px 10px rgba(15,23,42,0.12)", cursor: "pointer" }}
+                      onClick={() => { setProfileTarget(cu); profilePhotoRef.current?.click(); }}
+                      title="Subir foto">
+                      {!cu.photo && cu.av}
+                      <div style={{ position: "absolute", right: -2, bottom: -2, width: 18, height: 18, borderRadius: "50%", background: C.blue, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.w}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>
+                        <Camera size={9} strokeWidth={3} />
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{cu.name}</div>
+                      <div style={{ fontSize: 11, color: role?.color, fontWeight: 600, marginTop: 1 }}>{role?.label}</div>
+                      {cu.email && <div style={{ fontSize: 10, color: C.g500, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cu.email}</div>}
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div style={{ padding: 6 }}>
+                    {[
+                      { i: User,     l: "Mi perfil y métricas", desc: "Ver mi rendimiento", action: () => { setUserMenuOpen(false); setShowUserSwitch(false); setProfileModal(true); } },
+                      { i: Settings, l: "Configuración",        desc: "Preferencias de la cuenta", action: () => { setUserMenuOpen(false); setShowUserSwitch(false); setSettingsModal(true); } },
+                      { i: Lock,     l: "Cerrar sesión",        desc: "Salir de la plataforma", action: logout, danger: true }
+                    ].map((a, i) => (
+                      <button key={i} onClick={a.action} style={{
+                        display: "flex", alignItems: "center", gap: 11, width: "100%",
+                        padding: "10px 12px", border: "none", borderRadius: 9,
+                        background: a.active ? `${C.blue}08` : "transparent",
+                        cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                        color: a.danger ? "#EF4444" : C.navy, transition: "background .12s"
+                      }}
+                        onMouseEnter={e => { if (!a.active) e.currentTarget.style.background = a.danger ? "#FEE2E2" : "#F5F7FB"; }}
+                        onMouseLeave={e => { if (!a.active) e.currentTarget.style.background = "transparent"; }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: a.danger ? "#FEE2E2" : a.active ? `${C.blue}20` : `${C.blue}10`, color: a.danger ? "#EF4444" : C.blue, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <a.i size={14} strokeWidth={1.85} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700 }}>{a.l}</div>
+                          <div style={{ fontSize: 10, color: C.g500, marginTop: 1 }}>{a.desc}</div>
+                        </div>
+                        {a.active && <ChevronUp size={13} color={C.blue} style={{ flexShrink: 0 }} />}
+                      </button>
+                    ))}
+
+                    {/* Lista de usuarios — aparece al hacer clic en "Cambiar usuario" */}
+                    {showUserSwitch && (
+                      <div style={{ margin: "4px 0 2px", background: C.g50, borderRadius: 10, border: `1px solid ${C.g200}`, overflow: "hidden" }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.g500, padding: "6px 12px 4px", textTransform: "uppercase", letterSpacing: 1 }}>Seleccionar usuario</div>
+                        {users.filter(u => u.on).map(u => {
+                          const ur = ROLES[u.role];
+                          const isCurrent = u.id === cu.id;
+                          return (
+                            <button key={u.id} onClick={() => { setCu(u); setUserMenuOpen(false); setShowUserSwitch(false); if (isMobile) setSideOpen(false); }}
+                              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 12px", border: "none", background: isCurrent ? `${C.blue}08` : "transparent", cursor: isCurrent ? "default" : "pointer", fontFamily: "inherit", transition: "background .12s" }}
+                              onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = `${C.blue}06`; }}
+                              onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "transparent"; }}>
+                              <div style={{ width: 30, height: 30, borderRadius: "50%", background: u.photo ? `url(${u.photo}) center/cover` : `${ur?.color}25`, color: ur?.color, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: isCurrent ? `2px solid ${ur?.color}` : "2px solid transparent" }}>
+                                {!u.photo && u.av}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                                <div style={{ fontSize: 12, fontWeight: isCurrent ? 700 : 500, color: C.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                                <div style={{ fontSize: 9.5, color: ur?.color, fontWeight: 600 }}>{ur?.short || ur?.label}</div>
+                              </div>
+                              {isCurrent && <Check size={13} color={ur?.color} style={{ flexShrink: 0 }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      {!role?.all && <div style={{ margin: "10px 14px 0", background: `${role?.color}08`, border: `1px solid ${role?.color}20`, borderRadius: 7, padding: "5px 11px", display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: role?.color }}>
+        <Lock size={11} /><span>Vista <strong>{role?.label}</strong> — Acceso: {(role?.pages || []).join(", ")}</span>
+      </div>}
+      <div style={{ padding: isMobile ? 10 : 15, maxWidth: 1400 }}>{pageMap[page]}</div>
+      {/* Footer */}
+      <div style={{ padding: "12px 15px", marginTop: 20, borderTop: `1px solid ${C.g200}`, background: C.g50, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, fontSize: 10, color: C.g400 }}>
+        <div>
+          <strong style={{ color: C.navy }}>SisteKore</strong> v1.0 · Plataforma SaaS con IA
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <span>© {new Date().getFullYear()} <strong style={{ color: C.red }}>SisteKore</strong> · Medellín, Colombia</span>
+          <a href="mailto:sistekore@gmail.com" style={{ color: C.blue, textDecoration: "none" }}>sistekore@gmail.com</a>
+        </div>
+      </div>
+    </div>
+    {showN && <div onClick={() => setShowN(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />}
+    <style>{`*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent !important;-webkit-touch-callout:none}
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
+body{overflow-x:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:${C.g300};border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:${C.g400}}
+/* Quitar resaltado azul de tap en TODOS los elementos interactivos */
+button, a, input, select, textarea, [role="button"], [onclick], div[style*="cursor: pointer"], div[style*="cursor:pointer"]{
+  -webkit-tap-highlight-color:transparent !important;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+  outline:none
+}
+/* Mantener selección de texto sólo en inputs y textareas */
+input, textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
+/* Estado focus visible solo con teclado (no con tap) */
+button:focus, a:focus, [role="button"]:focus{outline:none}
+button:focus-visible, a:focus-visible{outline:2px solid ${C.blue}40;outline-offset:1px}
+/* === MÓVIL: tap targets mínimos 44px (estándar iOS/Android) === */
+@media(max-width:767px){
+  /* Sidebar: items 44px alto mínimo */
+  nav button{min-height:44px !important}
+  /* Topbar: iconos circulares 40px mínimo */
+  header button, [style*="height: 52"] button{min-width:40px !important;min-height:40px !important}
+  /* Botones de ticket actions, "Ver →", "Ver todos" */
+  button[style*="font-size: 10"], button[style*="font-size: 11"], button[style*="font-size: 12"]{min-height:40px !important}
+  /* Links email/teléfono inline: padding mayor + min altura */
+  a[href^="mailto"], a[href^="tel"]{padding:10px 4px !important;display:inline-block;min-height:40px;line-height:1.4}
+  a[href*="wa.me"]{display:inline-flex;align-items:center;min-height:40px}
+  /* Inputs: 16px para evitar zoom iOS, 44px tap area */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea{font-size:16px !important;min-height:44px !important}
+  /* textarea puede crecer */
+  textarea{min-height:80px !important}
+}
+input:focus,select:focus,textarea:focus{outline:2px solid ${C.blue}40;outline-offset:1px}
+a{transition:opacity .15s}
+a:hover{opacity:.85}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse-sos{0%,100%{box-shadow:0 2px 6px rgba(192,57,43,.4)}50%{box-shadow:0 4px 16px rgba(192,57,43,.7)}}
+@keyframes float-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes eddy-greet{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-8px) rotate(-3deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-4px) rotate(3deg)}100%{transform:translateY(0) rotate(0deg)}}
+@keyframes eddy-glow{0%,100%{filter:drop-shadow(0 0 24px rgba(124,58,237,0.45)) drop-shadow(0 0 48px rgba(37,99,255,0.25))}50%{filter:drop-shadow(0 0 36px rgba(168,85,247,0.55)) drop-shadow(0 0 72px rgba(37,99,255,0.35))}}
+@keyframes star-twinkle{0%,100%{opacity:0.3}50%{opacity:1}}
+@keyframes wave-flow{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+/* Drift del universo — estrellas viajando de un extremo al otro de la pantalla */
+@keyframes star-drift-down{0%{transform:translateY(-50vh)}100%{transform:translateY(50vh)}}
+@keyframes star-drift-up{0%{transform:translateY(50vh)}100%{transform:translateY(-50vh)}}
+@keyframes star-drift-diag{0%{transform:translate(-30vw,-30vh)}100%{transform:translate(30vw,30vh)}}
+/* Fondo nebulosa: nubes de gas púrpura/azul flotando muy lento */
+@keyframes nebula-drift-1{
+  0%{transform:translate(0,0) scale(1);opacity:0.4}
+  50%{transform:translate(30vw,15vh) scale(1.3);opacity:0.6}
+  100%{transform:translate(60vw,30vh) scale(1);opacity:0.4}
+}
+@keyframes nebula-drift-2{
+  0%{transform:translate(0,0) scale(1.2);opacity:0.5}
+  50%{transform:translate(-25vw,-20vh) scale(1);opacity:0.7}
+  100%{transform:translate(-50vw,-40vh) scale(1.2);opacity:0.5}
+}
+@keyframes nebula-drift-3{
+  0%{transform:translate(0,0) scale(0.9);opacity:0.3}
+  50%{transform:translate(20vw,-30vh) scale(1.4);opacity:0.5}
+  100%{transform:translate(40vw,-60vh) scale(0.9);opacity:0.3}
+}
+/* Pulso sutil del fondo entero (subtle breathing) */
+@keyframes bg-pulse{
+  0%,100%{filter:brightness(1) saturate(1)}
+  50%{filter:brightness(1.05) saturate(1.1)}
+}
+/* Cometas — la CABEZA va primero (por eso la rotación apunta en la dirección de movimiento) */
+/* Diagonal arriba-izquierda → abajo-derecha · cabeza apunta down-right = rotate(45deg) */
+@keyframes comet-tl-br{
+  0%{transform:translate(-15vw,-15vh) rotate(45deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(115vw,115vh) rotate(45deg);opacity:0}
+}
+/* Diagonal arriba-derecha → abajo-izquierda · cabeza apunta down-left = rotate(135deg) */
+@keyframes comet-tr-bl{
+  0%{transform:translate(15vw,-15vh) rotate(135deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(-115vw,115vh) rotate(135deg);opacity:0}
+}
+/* Diagonal abajo-izquierda → arriba-derecha · cabeza apunta up-right = rotate(-45deg) */
+@keyframes comet-bl-tr{
+  0%{transform:translate(-15vw,15vh) rotate(-45deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(115vw,-115vh) rotate(-45deg);opacity:0}
+}
+/* Diagonal abajo-derecha → arriba-izquierda · cabeza apunta up-left = rotate(-135deg) */
+@keyframes comet-br-tl{
+  0%{transform:translate(15vw,15vh) rotate(-135deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(-115vw,-115vh) rotate(-135deg);opacity:0}
+}
+/* Horizontal izquierda → derecha · cabeza apunta right = rotate(0deg) */
+@keyframes comet-l-r{
+  0%{transform:translate(-20vw,0) rotate(0deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(120vw,0) rotate(0deg);opacity:0}
+}
+/* Horizontal derecha → izquierda · cabeza apunta left = rotate(180deg) */
+@keyframes comet-r-l{
+  0%{transform:translate(20vw,0) rotate(180deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(-120vw,0) rotate(180deg);opacity:0}
+}
+/* Versión "mini" para sidebar (más estrecho) — cabeza también apunta a 45° */
+@keyframes comet-pass{
+  0%{transform:translate(-60px,-60px) rotate(45deg);opacity:0}
+  8%{opacity:1}92%{opacity:1}
+  100%{transform:translate(320px,520px) rotate(45deg);opacity:0}
+}
+/* Versión Portal — viaja PANTALLA COMPLETA garantizado (1500px x 1000px) */
+@keyframes comet-pass-portal{
+  0%{transform:translate(-200px,-200px) rotate(45deg);opacity:0}
+  6%{opacity:1}94%{opacity:1}
+  100%{transform:translate(1700px,1100px) rotate(45deg);opacity:0}
+}
+/* Estrella fugaz: streak corto y rápido */
+@keyframes shoot-star{
+  0%{transform:translate(0,0) scaleX(0);opacity:0}
+  20%{opacity:1;transform:translate(20px,30px) scaleX(1)}
+  100%{transform:translate(180px,260px) scaleX(0.4);opacity:0}
+}
+/* Twinkle + drift combinado para algunas estrellas */
+@keyframes star-twinkle-drift{0%,100%{opacity:0.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-10px)}}
+
+/* === RESPONSIVE MÓVIL === */
+@media(max-width:767px){
+  /* Scroll horizontal en tablas */
+  [data-table-outer]{overflow:auto !important}
+  [data-table-scroll]{overflow-x:scroll !important;-webkit-overflow-scrolling:touch !important}
+  table{font-size:10px !important;width:max-content !important;min-width:100%}
+  table th,table td{padding:4px 6px !important;white-space:nowrap}
+
+  /* Títulos más pequeños */
+  h1{font-size:17px !important}
+  h2{font-size:14px !important}
+  h3{font-size:12px !important}
+
+  /* KPIs en grid de 2 columnas */
+  [data-kpi-grid]{
+    grid-template-columns:repeat(2,1fr) !important;
+    gap:7px !important;
+  }
+  [data-kpi]{
+    padding:9px 10px !important;
+    min-width:0 !important;
+    border-radius:9px !important;
+  }
+  [data-kpi] [data-kpi-val]{font-size:16px !important}
+  [data-kpi] [data-kpi-label]{font-size:9.5px !important}
+
+  /* Modales: hoja inferior en móvil */
+  [data-modal]{
+    max-width:100% !important;
+    max-height:92vh !important;
+    border-radius:16px 16px 0 0 !important;
+    margin-top:auto !important;
+    position:fixed !important;
+    bottom:0 !important;
+    left:0 !important;
+    right:0 !important;
+  }
+
+  /* Cards con padding reducido */
+  [data-card]{padding:10px !important}
+
+  /* Tabs: en móvil envuelven a múltiples filas (sin scroll horizontal) */
+  [data-tabs]{
+    overflow:visible !important;
+    flex-wrap:wrap !important;
+    gap:4px !important;
+    border-bottom:none !important;
+    padding-bottom:8px;
+    margin-bottom:12px !important;
+    border-bottom:1px solid rgba(226,232,240,0.6) !important;
+  }
+  [data-tabs] button{
+    padding:7px 11px !important;
+    font-size:10.5px !important;
+    white-space:nowrap;
+    flex-shrink:0;
+    min-height:36px;
+    border-radius:8px !important;
+    margin-bottom:2px;
+  }
+
+  /* Filas de tickets/clientes */
+  [data-list-item]{
+    padding:8px 10px !important;
+    flex-wrap:wrap !important;
+  }
+  [data-list-item] [data-list-title]{
+    width:100%;
+    margin-bottom:3px;
+  }
+
+  /* Calendario: sidebar técnicos se oculta, agenda ocupa todo */
+  [data-cal-grid]{
+    grid-template-columns:1fr !important;
+  }
+  [data-cal-sidebar]{display:none !important}
+
+  /* Calendario vista MES — columnas de igual ancho aunque haya eventos largos */
+  [data-cal-grid] [style*="repeat(7, 1fr)"]{
+    grid-template-columns:repeat(7,minmax(0,1fr)) !important;
+    gap:2px !important;
+  }
+  [data-cal-grid] [style*="repeat(7, 1fr)"] > div{
+    min-height:56px !important;
+    padding:3px 2px !important;
+    font-size:9px !important;
+    overflow:hidden !important;
+  }
+  /* Cabecera días LUN MAR MIE etc */
+  [data-cal-grid] [style*="repeat(7, 1fr)"][style*="font-size: 10"] > div,
+  [data-cal-grid] [style*="repeat(7, 1fr)"][style*="font-size: 9.5"] > div{
+    padding:4px 0 !important;
+    font-size:8.5px !important
+  }
+  /* Eventos dentro de celdas del mes: más compactos */
+  [data-cal-grid] [style*="repeat(7, 1fr)"] > div > div[style*="border-left"]{
+    font-size:8.5px !important;
+    padding:2px 4px !important;
+  }
+  /* Vista DÍA — time grid scrollable horizontalmente */
+  [data-cal-timegrid]{overflow-x:auto !important;-webkit-overflow-scrolling:touch}
+  [data-cal-timegrid] > div{min-width:auto}
+
+  /* Ocultar elementos secundarios en móvil */
+  .mobile-hide{display:none !important}
+  /* Mostrar elementos solo en móvil (inline o flex) */
+  span.mobile-only-inline{display:inline-flex !important;align-items:center;gap:3px}
+  div.mobile-only-inline{display:flex !important}
+
+  /* Tablas más compactas y legibles en móvil */
+  table{font-size:11px !important;width:100% !important;table-layout:auto}
+  table th, table td{padding:8px 5px !important}
+  /* Permitir wrap en cliente/incidente */
+  table td{word-break:break-word}
+  /* Reducir tamaño de pills/badges en móvil */
+  table span[style*="border-radius: 12"], table span[style*="border-radius: 10"]{font-size:9.5px !important;padding:2px 7px !important}
+  /* Status pill: compacto */
+  table [style*="StatusPill"], table .status-pill{font-size:10px !important;padding:3px 8px !important}
+  /* Botón ⋮ menú: tap target cómodo */
+  table button[title*="opciones"], table button[title*="Más"]{min-width:32px;min-height:32px;padding:4px 6px !important}
+  /* Forzar la última columna (acciones ⋮) a anchura fija */
+  table th:last-child, table td:last-child{width:32px !important;padding:8px 2px !important;min-width:32px}
+  /* Wrapper de tabla: no scroll forzado en móvil */
+  [data-table-outer], [data-table-scroll]{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* ── Paneles laterales aside: ocultos en móvil ── */
+  [data-aside]{display:none !important}
+
+  /* ── KB: botón Nuevo Artículo siempre visible en header ── */
+  .kb-new-btn{display:inline-flex !important}
+
+  /* ── Calendario: time grid con scroll horizontal ── */
+  /* Día: en móvil mostrar la lista cronológica, ocultar el grid de técnicos */
+  [data-cal-mobile-list]{display:block !important}
+  [data-cal-timegrid]{display:none !important}
+
+  /* Panel de notificaciones — fullscreen en móvil */
+  [data-notif-panel]{
+    position:fixed !important;
+    top:60px !important;
+    right:8px !important;
+    left:8px !important;
+    width:auto !important;
+    max-width:none !important;
+    max-height:calc(100vh - 80px) !important;
+    z-index:300 !important;
+  }
+  [data-notif-panel] > div:nth-child(2){max-height:calc(100vh - 140px) !important}
+
+  /* ── Páginas: flexbox columna cuando el aside se oculta ── */
+  [data-page-flex]{flex-direction:column !important;align-items:stretch !important}
+
+  /* Botones táctiles más cómodos */
+  button{min-height:36px;-webkit-tap-highlight-color:transparent}
+  input,select,textarea{font-size:16px !important}
+
+  /* Chips de filtro: 2 filas en móvil (sin scroll horizontal) */
+  [data-chip-row]{overflow:visible !important;flex-wrap:wrap !important;gap:6px !important;margin-bottom:12px !important;padding-bottom:0 !important}
+  [data-chip-row] > *{flex-shrink:0 !important;font-size:10.5px !important;padding:6px 9px !important;min-height:34px !important}
+  [data-chip-row] button[onclick]:last-child, [data-chip-row] > button:last-child{margin-left:0 !important}
+
+  /* Inventario filtros: búsqueda ocupa fila completa, selects en 2ª fila */
+  [data-inv-search]{width:100% !important;min-width:0 !important;flex:none !important}
+  [data-inv-filters] select{flex:1 !important;min-width:0 !important;font-size:13px !important}
+  [data-inv-filters] > button{flex-shrink:0}
+
+  /* Inventario acciones: botones compactos */
+  [data-inv-actions]{flex-direction:column !important;gap:3px !important}
+  [data-inv-actions] button{padding:4px 7px !important;font-size:9.5px !important}
+
+  /* Tabla Resueltos: scroll horizontal */
+  [data-table-outer]{overflow:auto !important}
+}
+
+/* Tablet (768-1023px) */
+@media(min-width:768px) and (max-width:1023px){
+  [data-kpi-grid]{grid-template-columns:repeat(3,1fr) !important}
+  [data-cal-grid]{grid-template-columns:200px 1fr !important}
+  [data-aside]{width:220px !important}
+  .tablet-hide{display:none !important}
+  [data-table-outer]{overflow:auto !important}
+  [data-table-scroll]{overflow-x:scroll !important;-webkit-overflow-scrolling:touch !important}
+  table{font-size:11px !important}
+}
+
+/* ====== PORTAL CLIENTE — RESPONSIVE ====== */
+
+/* Taps instantáneos en móvil (elimina delay 300ms de iOS/Android) */
+[data-portal-tabs] button{touch-action:manipulation}
+
+@media(max-width:767px){
+  /* Contenedor raíz del portal: sin overflow horizontal */
+  [data-portal-root]{overflow-x:hidden !important}
+
+  /* Header portal */
+  [data-portal-header]{padding:10px 14px !important}
+  [data-portal-header] img{height:34px !important}
+  [data-portal-header] button{padding:7px 12px !important;font-size:11px !important;gap:5px !important}
+
+  /* Hero */
+  [data-portal-h1]{font-size:clamp(22px,7.5vw,36px) !important;letter-spacing:-0.5px !important}
+
+  /* Reducir padding hero en móvil */
+  [data-portal-hero]{padding:16px 12px 20px !important}
+
+  /* Tabs: apilados en 1 columna, botones fáciles de tocar */
+  [data-portal-tabs]{grid-template-columns:1fr !important;gap:8px !important}
+  [data-portal-tabs] button{
+    padding:14px 16px !important;
+    gap:12px !important;
+    min-height:60px !important;
+    border-radius:14px !important;
+  }
+  [data-portal-tabs] button > div:first-child{
+    width:40px !important;height:40px !important;flex-shrink:0 !important;border-radius:10px !important
+  }
+  [data-portal-tabs] button > div:last-child > div:first-child{font-size:13px !important;font-weight:700 !important}
+  [data-portal-tabs] button > div:last-child > div:last-child{font-size:10.5px !important;display:block !important}
+
+  /* Panel 2 col → 1 col */
+  [data-portal-panel]{grid-template-columns:1fr !important;gap:12px !important;padding:10px !important}
+
+  /* Columna derecha (sidebar) debajo del form en móvil */
+  [data-portal-panel] > div:last-child{order:2}
+
+  /* Form blanco: reducir padding */
+  [data-portal-panel] > div:first-child{padding:16px !important;border-radius:14px !important}
+
+  /* Form grid: 1 columna */
+  [data-portal-form-grid]{grid-template-columns:1fr !important}
+
+  /* Botones submit: apilar en columna */
+  [data-portal-submit-row]{flex-direction:column !important;align-items:stretch !important;gap:8px !important}
+  [data-portal-submit-row] button{width:100% !important;justify-content:center !important}
+
+  /* Footer: 1 columna */
+  [data-portal-footer]{
+    grid-template-columns:1fr !important;
+    gap:16px !important;
+    padding:14px !important;
+    margin-top:14px !important;
+  }
+  [data-portal-footer] > div:nth-child(2){align-items:flex-start !important;text-align:left !important}
+  [data-portal-footer] > div:nth-child(3){align-items:flex-start !important}
+  [data-portal-footer] > div:nth-child(3) > div:first-child{align-self:flex-start}
+  [data-portal-footer] > div:nth-child(3) > div:nth-child(2){justify-content:flex-start !important}
+  [data-portal-footer] > div:nth-child(3) > div:last-child{align-items:flex-start !important;width:100%}
+}
+
+@media(min-width:768px) and (max-width:1023px){
+  /* Tablet: 3 cols tabs (normal), sidebar más estrecho */
+  [data-portal-tabs]{grid-template-columns:repeat(3,1fr) !important}
+  [data-portal-panel]{grid-template-columns:1fr 240px !important}
+  [data-portal-footer]{grid-template-columns:1fr 1fr !important}
+  [data-portal-footer] > div:nth-child(2){display:none !important}
+  [data-portal-h1]{font-size:40px !important}
+  [data-portal-header] button{font-size:12px !important}
+}
+
+@media print{
+  .no-print{display:none !important}
+  body{background:white !important}
+}`}</style>
+    {/* === ADMIN PANEL — Aprobación de usuarios (solo Alexander/Erika) === */}
+    {adminPanelOpen && isAdmin && (
+      <div onClick={() => setAdminPanelOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(10,21,53,0.7)", backdropFilter: "blur(8px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 720, maxHeight: "90vh", background: "#FFFFFF", borderRadius: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Header */}
+          <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.g100}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${C.purple}15`, color: C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Shield size={18} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: C.navy, margin: 0 }}>Panel de Administración</h2>
+                <div style={{ fontSize: 11, color: C.g500 }}>Aprobar / rechazar usuarios · Reseteo de contraseñas</div>
+              </div>
+            </div>
+            <button onClick={() => setAdminPanelOpen(false)} style={{ background: "none", border: "none", color: C.g500, fontSize: 24, cursor: "pointer", padding: 4, fontFamily: "inherit" }}>×</button>
+          </div>
+          {/* Lista de pendientes / rechazados */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 22px" }}>
+            {pendingProfiles.length === 0 ? (
+              <div style={{ padding: 40, textAlign: "center", color: C.g400 }}>
+                <div style={{ fontSize: 42, marginBottom: 10 }}>✨</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>No hay usuarios pendientes</div>
+                <div style={{ fontSize: 11, marginTop: 4 }}>Todos los registros están aprobados.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 0" }}>
+                {pendingProfiles.map(p => {
+                  const isPending = p.status === "pending";
+                  return (
+                    <div key={p.id} style={{ padding: "14px 16px", background: isPending ? "#FEF3C7" : "#FEE2E2", border: `1px solid ${isPending ? "#FCD34D" : "#FCA5A5"}`, borderRadius: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 700, color: C.navy }}>{p.email}</div>
+                            <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 9.5, fontWeight: 700, background: isPending ? "#F59E0B" : "#DC2626", color: "#FFFFFF", textTransform: "uppercase", letterSpacing: 0.5 }}>{isPending ? "Pendiente" : "Rechazado"}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: C.g600, marginTop: 4 }}>Nombre: {p.name || "—"}</div>
+                          <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2 }}>Registrado: {new Date(p.created_at).toLocaleString("es-CO")}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {isPending && (
+                            <>
+                              <select id={`role-${p.id}`} defaultValue="aux_operativo" style={{ padding: "6px 8px", borderRadius: 7, border: `1px solid ${C.g300}`, fontSize: 11, background: "#FFFFFF", fontFamily: "inherit" }}>
+                                <option value="aux_operativo">Auxiliar Operativo</option>
+                                <option value="aux_comercial">Auxiliar Comercial</option>
+                                <option value="aux_admin">Auxiliar Admin</option>
+                                <option value="aux_contable">Auxiliar Contable</option>
+                                <option value="dir_operativo">Director Operativo</option>
+                                <option value="dir_comercial">Director Comercial</option>
+                              </select>
+                              <button onClick={() => approveUser(p.id, document.getElementById(`role-${p.id}`).value)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#10B981", color: "#FFFFFF", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✓ Aprobar</button>
+                              <button onClick={() => rejectUser(p.id)} style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${C.err}`, background: "#FFFFFF", color: C.err, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✕ Rechazar</button>
+                            </>
+                          )}
+                          {!isPending && (
+                            <button onClick={() => approveUser(p.id, "aux_operativo")} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#10B981", color: "#FFFFFF", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✓ Re-aprobar</button>
+                          )}
+                          <button onClick={() => resetUserPassword(p.email)} title="Enviar enlace de restablecimiento" style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${C.g300}`, background: "#FFFFFF", color: C.g600, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>🔑</button>
+                          <button onClick={() => deleteProfile(p.id, p.email)} title="Eliminar perfil" style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${C.err}40`, background: "#FFFFFF", color: C.err, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>🗑</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div style={{ padding: "12px 22px", borderTop: `1px solid ${C.g100}`, background: C.g50, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 11, color: C.g500 }}>{pendingProfiles.filter(p => p.status === "pending").length} pendientes · {pendingProfiles.filter(p => p.status === "rejected").length} rechazados</div>
+            <button onClick={refreshPending} style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${C.g200}`, background: "#FFFFFF", color: C.g600, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>🔄 Refrescar</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* EDDY SOUPORT — Asistente Virtual (recibe la data para dar contexto al modelo) */}
+    <EddySouport d={data} />
+
+    {/* Hidden file input para foto de perfil */}
+    <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleProfilePhotoUpload} />
+
+    {/* MODAL: Mi Perfil + Métricas */}
+    <Mo open={profileModal} onClose={() => setProfileModal(false)} title="👤 Mi Perfil">
+      {(() => {
+        // Calcular métricas personales según el rol
+        const myTickets = (data.tickets || []).filter(t => t.tech === cu.name);
+        const mySolved = (data.solved || []).filter(t => t.tech === cu.name);
+        const myRated = mySolved.filter(t => t.sat > 0);
+        const myAvgSat = myRated.length ? (myRated.reduce((s, t) => s + t.sat, 0) / myRated.length).toFixed(1) : "—";
+        const myEvents = (data.events || []).filter(e => e.tech === cu.name);
+        const myEventsToday = myEvents.filter(e => e.date === new Date().toISOString().slice(0, 10));
+        // Métricas comerciales (placeholder hasta conectar Supabase)
+        const myClosedDeals = (data.solved || []).filter(t => t.tech === cu.name && t.sat >= 4);
+        const myCommission = myClosedDeals.length * 150000; // estimación: $150K por cierre
+        // Métricas según rol
+        const isCommercial = cu.role === "dir_comercial" || cu.role === "aux_comercial";
+        const isOperational = cu.role === "aux_operativo" || cu.role === "dir_operativo";
+        const isAdmin = cu.role === "dir_admin" || cu.role === "aux_admin";
+        const isAccountant = cu.role === "dir_contable" || cu.role === "aux_contable";
+
+        return (
+          <div>
+            {/* Header con avatar grande */}
+            <div style={{ background: `linear-gradient(135deg, ${role?.color}15, ${role?.color}05)`, borderRadius: 14, padding: 18, marginBottom: 16, display: "flex", gap: 14, alignItems: "center" }}>
+              <div onClick={() => { setProfileTarget(cu); profilePhotoRef.current?.click(); }} title="Clic para cambiar foto"
+                style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", background: cu.photo ? `url(${cu.photo}) center/cover` : `${role?.color}30`, color: role?.color, fontSize: 24, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `4px solid ${C.w}`, boxShadow: "0 6px 16px rgba(15,23,42,0.15)", cursor: "pointer" }}>
+                {!cu.photo && cu.av}
+                <div style={{ position: "absolute", right: -2, bottom: -2, width: 24, height: 24, borderRadius: "50%", background: C.blue, color: C.w, display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.w}`, boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+                  <Camera size={12} strokeWidth={2.5} />
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: C.navy }}>{cu.name}</div>
+                <div style={{ fontSize: 12, color: role?.color, fontWeight: 600, marginTop: 2 }}>{role?.label}</div>
+                {cu.email && <div style={{ fontSize: 11, color: C.g500, marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}><Mail size={11} /> {cu.email}</div>}
+                {cu.phone && <div style={{ fontSize: 11, color: C.g500, marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}><Phone size={11} /> {cu.phone}</div>}
+              </div>
+            </div>
+
+            {/* Métricas según rol */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Mis métricas este mes</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+                {isOperational && [
+                  { label: "Tickets activos", val: myTickets.length, color: "#3B82F6", bg: "#DBEAFE", icon: Ticket },
+                  { label: "Resueltos", val: mySolved.length, color: "#10B981", bg: "#D1FAE5", icon: CheckCircle },
+                  { label: "Satisfacción", val: `${myAvgSat}/5`, color: "#F59E0B", bg: "#FEF3C7", icon: Star },
+                  { label: "Eventos hoy", val: myEventsToday.length, color: "#7C3AED", bg: "#EDE9FE", icon: Calendar }
+                ].map((m, i) => (
+                  <div key={i} style={{ padding: 12, borderRadius: 12, background: m.bg, border: `1px solid ${m.color}25` }}>
+                    <m.icon size={16} color={m.color} strokeWidth={1.85} />
+                    <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, marginTop: 6, lineHeight: 1 }}>{m.val}</div>
+                    <div style={{ fontSize: 10.5, color: C.g500, fontWeight: 600, marginTop: 4 }}>{m.label}</div>
+                  </div>
+                ))}
+                {isCommercial && [
+                  { label: "Eventos hoy", val: myEventsToday.length, color: "#7C3AED", bg: "#EDE9FE", icon: Calendar },
+                  { label: "Clientes", val: data.clients.length, color: "#10B981", bg: "#D1FAE5", icon: Users },
+                  { label: "Tickets activos", val: myTickets.length, color: "#3B82F6", bg: "#DBEAFE", icon: Ticket }
+                ].map((m, i) => (
+                  <div key={i} style={{ padding: 12, borderRadius: 12, background: m.bg, border: `1px solid ${m.color}25` }}>
+                    <m.icon size={16} color={m.color} strokeWidth={1.85} />
+                    <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, marginTop: 6, lineHeight: 1 }}>{m.val}</div>
+                    <div style={{ fontSize: 10.5, color: C.g500, fontWeight: 600, marginTop: 4 }}>{m.label}</div>
+                  </div>
+                ))}
+                {(isAdmin || isAccountant) && [
+                  { label: "Acciones del mes", val: (data.audit || []).filter(a => a.user === cu.name).length, color: "#3B82F6", bg: "#DBEAFE", icon: Activity },
+                  { label: "Clientes", val: data.clients.length, color: "#10B981", bg: "#D1FAE5", icon: Users },
+                  { label: "Tickets activos", val: (data.tickets || []).length, color: "#7C3AED", bg: "#EDE9FE", icon: Ticket },
+                  { label: "Cumplimiento", val: "100%", color: "#10B981", bg: "#D1FAE5", icon: CheckCircle }
+                ].map((m, i) => (
+                  <div key={i} style={{ padding: 12, borderRadius: 12, background: m.bg, border: `1px solid ${m.color}25` }}>
+                    <m.icon size={16} color={m.color} strokeWidth={1.85} />
+                    <div style={{ fontSize: 22, fontWeight: 700, color: C.navy, marginTop: 6, lineHeight: 1 }}>{m.val}</div>
+                    <div style={{ fontSize: 10.5, color: C.g500, fontWeight: 600, marginTop: 4 }}>{m.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Metas y comisiones (placeholder) */}
+            <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 14, border: `1px solid rgba(124,58,237,0.18)` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <Target size={14} color={C.purple} />
+                <h3 style={{ fontSize: 12.5, fontWeight: 700, color: C.navy, margin: 0 }}>Mis metas y comisiones</h3>
+              </div>
+              <div style={{ fontSize: 11.5, color: C.g600, lineHeight: 1.5 }}>
+                {isCommercial ? `Estás al ${Math.min(100, Math.round((myClosedDeals.length / 5) * 100))}% de tu meta mensual (5 cierres). Comisión actual estimada: $${(myCommission / 1e3).toFixed(0)}K.` : "Configura tus metas personales para que el sistema calcule tu progreso y comisiones automáticamente."}
+              </div>
+              <div style={{ marginTop: 8, height: 8, borderRadius: 4, background: "#EEF2F7", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min(100, isCommercial ? Math.round((myClosedDeals.length / 5) * 100) : 65)}%`, background: `linear-gradient(90deg, ${C.purple}, ${C.blue})` }} />
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div style={{ background: "#FEF3C7", borderRadius: 10, padding: 11, border: `1px solid #F59E0B40`, fontSize: 11, color: "#92400E", lineHeight: 1.5, marginBottom: 12 }}>
+              🚧 <strong>Próximamente</strong> — Comisiones automáticas, metas personalizables, y reporte mensual descargable cuando conectemos Supabase.
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setProfileModal(false)} style={{ padding: "9px 14px", borderRadius: 9, border: `1px solid ${C.g200}`, background: C.w, color: C.g600, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cerrar</button>
+              <button onClick={() => { setProfileModal(false); goPage("users"); }} style={{ padding: "9px 16px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)`, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Users size={12} /> Ir a Usuarios
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+    </Mo>
+
+    {/* MODAL: Configuración */}
+    <Mo open={settingsModal} onClose={() => setSettingsModal(false)} title="⚙ Configuración">
+      <div>
+        <div style={{ background: `linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 100%)`, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid rgba(124,58,237,0.18)`, fontSize: 11.5, color: C.g600 }}>
+          ⚙ Personaliza tu experiencia en SisteKore. Los cambios se guardan automáticamente al conectar Supabase.
+        </div>
+
+        {/* Notificaciones */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Notificaciones</div>
+          {[
+            { name: "Tickets asignados a mí",  desc: "Push cuando me asignen un ticket nuevo", on: true },
+            { name: "SLA en riesgo",            desc: "Aviso cuando un ticket esté cerca del límite", on: true },
+            { name: "Mensajes de compañeros",   desc: "Notificación cuando me pidan ayuda", on: true },
+            { name: "Resumen diario por email", desc: "Mi resumen del día a las 5 PM", on: false }
+          ].map((n, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.g100}`, marginBottom: 6 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{n.name}</div>
+                <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2 }}>{n.desc}</div>
+              </div>
+              <div style={{ width: 38, height: 22, borderRadius: 11, background: n.on ? C.blue : C.g300, position: "relative", cursor: "pointer", transition: "background .15s" }} onClick={() => {
+                try {
+                  const prefs = JSON.parse(localStorage.getItem("sistekore-notif-prefs") || "{}");
+                  prefs[n.name] = !n.on;
+                  localStorage.setItem("sistekore-notif-prefs", JSON.stringify(prefs));
+                  n.on = !n.on;
+                } catch (e) {}
+              }}>
+                <div style={{ position: "absolute", top: 2, left: n.on ? 18 : 2, width: 18, height: 18, borderRadius: "50%", background: C.w, transition: "left .15s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Apariencia */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Apariencia</div>
+          <div style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.g100}`, marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Tema</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { l: "☀ Claro",  v: "claro"  },
+                { l: "🌙 Oscuro", v: "oscuro" },
+                { l: "🖥 Sistema", v: "sistema" }
+              ].map((t, i) => {
+                const currentTheme = (typeof window !== "undefined" && localStorage.getItem("sistekore-theme")) || "claro";
+                const active = currentTheme === t.v;
+                return (
+                  <button key={i} onClick={() => {
+                    try { localStorage.setItem("sistekore-theme", t.v); } catch (e) {}
+                    // Aplicar tema: oscuro = filter invert, sistema = detectar preferencia
+                    const root = document.documentElement;
+                    if (t.v === "oscuro") root.style.filter = "invert(0.92) hue-rotate(180deg)";
+                    else if (t.v === "sistema") {
+                      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                      root.style.filter = prefersDark ? "invert(0.92) hue-rotate(180deg)" : "";
+                    } else {
+                      root.style.filter = "";
+                    }
+                    // Forzar re-render del modal
+                    setSettingsModal(false); setTimeout(() => setSettingsModal(true), 50);
+                  }} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${active ? C.blue : C.g200}`, background: active ? `${C.blue}10` : C.w, color: active ? C.blue : C.g600, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t.l}</button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 10, color: C.g500, marginTop: 8, lineHeight: 1.4 }}>El modo oscuro aplica un filtro de inversión a toda la app.</div>
+          </div>
+        </div>
+
+        {/* Datos */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.g500, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Mis datos</div>
+          {[
+            { i: Download, l: "Descargar mis datos", desc: "Exporta toda tu info en JSON", action: () => { setSettingsModal(false); goPage("users"); } },
+            { i: Lock,     l: "Cambiar contraseña",   desc: "Actualizar credenciales de acceso", action: async () => {
+              const newPass = window.prompt("Nueva contraseña (mínimo 6 caracteres):");
+              if (!newPass) return;
+              if (newPass.length < 6) { alert("Mínimo 6 caracteres."); return; }
+              const { error } = await supabase.auth.updateUser({ password: newPass });
+              if (error) alert("Error: " + error.message);
+              else alert("✅ Contraseña actualizada. Úsala la próxima vez que ingreses.");
+            } },
+            { i: Trash2,   l: "Cerrar sesión",         desc: "Salir del sistema (tus datos se conservan)", action: handleLogout, danger: true }
+          ].map((d2, i) => (
+            <button key={i} onClick={d2.action} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.g100}`, marginBottom: 6, cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: C.w, color: d2.danger ? "#EF4444" : C.navy }}
+              onMouseEnter={e => e.currentTarget.style.background = d2.danger ? "#FEE2E2" : "#F5F7FB"}
+              onMouseLeave={e => e.currentTarget.style.background = C.w}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: d2.danger ? "#FEE2E2" : `${C.blue}10`, color: d2.danger ? "#EF4444" : C.blue, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <d2.i size={14} strokeWidth={1.85} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{d2.l}</div>
+                <div style={{ fontSize: 10.5, color: C.g500, marginTop: 2 }}>{d2.desc}</div>
+              </div>
+              <span style={{ color: C.g300 }}>›</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button onClick={() => setSettingsModal(false)} style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: C.w, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: `0 6px 18px rgba(124,58,237,0.3)` }}>Listo</button>
+        </div>
+      </div>
+    </Mo>
+  </div>;
+}
